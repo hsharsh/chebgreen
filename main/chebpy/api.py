@@ -1,5 +1,7 @@
 """User-facing functions"""
 
+import numpy as np
+
 from .core.bndfun import Bndfun
 from .core.chebfun import Chebfun
 from .core.utilities import Domain
@@ -25,6 +27,11 @@ def chebfun(f=None, domain=None, n=None):
         else:
             return Chebfun.initidentity(domain)
 
+    if isinstance(f, np.ndarray) and len(f.shape) == 2:
+        if f.shape[1] == 1:
+            return Chebfun.initvalues(f, domain)
+        else:
+            return np.array([Chebfun.initvalues(f[:,i], domain) for i in range(f.shape[1])]).reshape((1,-1))
     try:
         # chebfun(3.14, ... ), chebfun('3.14', ... )
         return Chebfun.initconst(float(f), domain)

@@ -53,6 +53,10 @@ class Chebfun:
         else:
             return cls.initfun_fixedlen(f, n, domain)
 
+    @classmethod
+    def initvalues(cls, values, domain=None):
+        return cls(generate_funs(domain, Bndfun.initvalues, {"values": values}))
+    
     # --------------------
     #  operator overloads
     # --------------------

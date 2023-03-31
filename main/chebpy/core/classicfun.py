@@ -63,6 +63,14 @@ class Classicfun(Fun, ABC):
         )
         return cls(onefun, interval)
 
+    @classmethod
+    def initvalues(cls, values, *, interval=None):
+        """Initialization of BndFun from an array of values at Chebyshev
+        points, values, and """
+        onefun = techdict[prefs.tech].initvalues(
+            np.asarray(values), interval=interval
+        )
+        return cls(onefun, interval)
     # -------------------
     #  'private' methods
     # -------------------
