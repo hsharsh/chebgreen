@@ -1,13 +1,19 @@
-import chebpy as cp
+import chebpy
 import numpy as np
 from abc import ABC, abstractmethod, abstractclassmethod
 
 class Chebfun2(ABC):
-    def __init__(self,g = None, domain = np.array([-1, 1, -1, 1])):
+    def __init__(self,g = None, domain = np.array([-1, 1, -1, 1]), prefx = chebpy.core.settings.DefaultPreferences, prefy = None):
 
         # Default domain is [-1,1] x [-1, 1]
         self.domain = domain
-        self.cols, self.rows, self.pivotValues, self.rank, self.vscale, self.cornervalues = self.constructor(g)
+        self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(g, prefx, prefy)
+
+        self.rank = len(self.pivotValues)
+        self.vscale = 0
+        self.cornervalues = np.array([0,0,0,0])
+
+        # Write a sampletest here
     
     def __repr__(self):
         header = f"chebfun2 object\n"
@@ -18,10 +24,12 @@ class Chebfun2(ABC):
         return header + toprow + rowdta + btmrow
     
 
-    def constructor(self, g = None, prefx = cp.core.settings.DefaultPreferences, prefy = cp.core.settings.DefaultPreferences):
+    def constructor(self, g = None, prefx = chebpy.core.settings.DefaultPreferences, prefy = None):
 
         # Define this somewhere in a config file
         minSample = np.array([17,17])
+        if prefy == None:
+            prefy = prefx
         pseudoLevel = min(prefx.eps, prefy.eps)
         
         factor = 4.0        # Ration between the size of matrix and #pivots.
@@ -56,15 +64,18 @@ class Chebfun2(ABC):
 
             ## INCOMPLETE
         
-        # Remove these
-        cols = np.array([])    # This should be a quasimatrix
-        rows = np.array([])    # This should be a quasimatrix
-        pivotValues = np.array([])
-        rank  = len(pivotValues)
-        vscale = 0
-        cornervalues = np.array([0,0,0,0])
+         # Remove these
+        colVals = np.zeros((17,5))
+        rowVals = np.zeros((17,5))
+        pivotVal = np.zeros((5))
+        pivotPos = np.zeros((5,2))
+
+        cols = chebpy.chebfun(colVals, np.array(self.domain[2:]), pref = prefy)    # This should be a quasimatrix
+        rows = chebpy.chebfun(rowVals, np.array(self.domain[:2]), pref = prefx)    # This should be a quasimatrix
+        pivotValues = pivotVal
+        pivotLocations = pivotPos
         
-        return cols, rows, pivotValues, rank, vscale, cornervalues
+        return cols, rows, pivotValues, pivotLocations
 
 def Max(A):
     return np.max(A), np.argmax(A)
@@ -78,7 +89,7 @@ def scaleNodes(x, dom):
     # Scale the nodes:
     return dom[2]*(x + 1)/2 + dom[1]*(1 - x)/2
 
-def chebpts(n, dom = cp.core.settings.DefaultPreferences.domain, type = 2):
+def chebpts(n, dom = chebpy.core.settings.DefaultPreferences.domain, type = 2):
     #chebpts    Chebyshev points.
     #   chebpts(N) returns N Chebyshev points of the 2nd-kind in [-1,1].
     #
@@ -93,9 +104,9 @@ def chebpts(n, dom = cp.core.settings.DefaultPreferences.domain, type = 2):
 
     # Create a dummy CHEBTECH of appropriate type to access static methods.
     if type == 1:
-        f = cp.core.chebtech.Chebtech
+        f = chebpy.core.chebtech.Chebtech
     elif type == 2:
-        f = cp.core.chebtech.Chebtech2
+        f = chebpy.core.chebtech.Chebtech2
     else:
         raise Exception('CHEBFUN:chebpts:type, Unknown point type.') 
 
