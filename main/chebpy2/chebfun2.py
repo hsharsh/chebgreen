@@ -32,8 +32,12 @@ class Chebfun2(ABC):
         # Define this somewhere in a config file
         minSample = np.array([17,17])
         maxRank = 513
+
         if prefy == None:
             prefy = prefx
+        
+        assert (prefx.tech == 'Chebfun2' and prefy.tech == 'Chebfun2'), "CHEBFUN:CHEBFUN2:constructor, Unrecognized technology"
+        
         pseudoLevel = min(prefx.eps, prefy.eps)
         
         factor = 4.0        # Ration between the size of matrix and #pivots.
@@ -45,7 +49,7 @@ class Chebfun2(ABC):
 
         while not isHappy and not failure:
             # Remove this
-            break
+            # break
             grid = minSample
 
             # Sample function on a Chebyshev tensor grid:
@@ -93,10 +97,10 @@ class Chebfun2(ABC):
                 failure = 1
                 raise RuntimeWarning('CHEBFUN:CHEBFUN2:constructor:rank, Not a low-rank function.')
             
-            # Check if the column and row slices are resolved.
+            # Check if the column and row slices are resolved. Hardcoded for Chebtech2
 
             ## INCOMPLETE
-        
+
          # Remove these
         colVals = np.zeros((17,5))
         rowVals = np.zeros((17,5))

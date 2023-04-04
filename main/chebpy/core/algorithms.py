@@ -233,22 +233,23 @@ def adaptive(cls, fun, hscale=1, maxpow2=None):
             break
     return coeffs
 
-def happinessCheck(tech, f, vals, data, pref, hscale = 1):
-    """happinessCHeck tests if the Chebtech2 with values, vals, would be a
+def happinessCheck(tech, vals, pref):
+    """happinessCHeck tests if the Chebtech2, tech, with values, vals, would be a
     'happy' approximation (in the sense defined below and relative to
     data['vscale'] and data['hscale']) to the function handle OP. If the approximation
     is happy, the output, isHappy, is True, the 'cutoff' indicates the point to 
     which the coefficients may be truncated."""
     
-    # eps = pref.eps
-    # tol = eps * max(hscale, 1)
-    # chplen = standard_chop(coeffs, tol = tol)
+    eps = pref.eps
+    coeffs = tech.coeffs
+    tol = eps * max(tech.hscale, 1)
 
-    # if chplen < coeffs.size:
-    #     pass
-    isHappy = 1
-    cutoff = np.nan
-    return isHappy, cutoff
+    chplen = standard_chop(coeffs, tol = tol)
+
+    if chplen < len(coeffs):    
+       return True, chplen
+    
+    return False, chplen
 
 def coeffmult(fc, gc):
     """Coefficient-Space multiplication of equal-length first-kind

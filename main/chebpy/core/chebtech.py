@@ -80,7 +80,7 @@ class Chebtech(Smoothfun, ABC):
         return cls(coeffs, interval=interval)
 
     @classmethod
-    def initvalues(cls, values, *, interval=None):
+    def initvalues(cls, values, interval=None):
         """Initialise a Chebtech from an array of values at Chebyshev points"""
         coeffs = cls._vals2coeffs(values)
         return cls(coeffs, interval=interval)
@@ -151,6 +151,11 @@ class Chebtech(Smoothfun, ABC):
     def vscale(self):
         """Estimate the vertical scale of a Chebtech"""
         return np.abs(coerce_list((self.values()))).max()
+    
+    @property
+    def hscale(self):
+        """Horizontal scale of a Chebtech"""
+        return self.interval.hscale
 
     # -----------
     #  utilities
