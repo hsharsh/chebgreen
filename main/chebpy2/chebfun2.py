@@ -28,6 +28,7 @@ class Chebfun2(ABC):
 
         # Define this somewhere in a config file
         minSample = np.array([17,17])
+        maxRank = 513
         if prefy == None:
             prefy = prefx
         pseudoLevel = min(prefx.eps, prefy.eps)
@@ -51,16 +52,45 @@ class Chebfun2(ABC):
             # Does the function blow up or evaluate to nan?:
             vscale = np.max(np.abs(vals[:]))
 
-            if vscale == np.nan:
+            if vscale == np.inf:
                 raise RuntimeError('Function returned INF when evaluated')
             elif (vals[:] == np.nan).any():
                 raise RuntimeError('Function returned NaN when evaluated')
             
 
             relTol, absTol = getTol(xx, yy, vals, self.domain, pseudoLevel)
-            # Set user eps to relTol
+            prefx.eps = relTol
+            prefy.eps = relTol
+
+            #### Phase 1:
+            # Do GE with complete pivoting
             pivotVal, pivotPos, rowVals, colVals, iFail = completeACA(vals, absTol, factor)
 
+            strike = 1
+            while iFail and (grid <= factor*(maxRank-1)+1).any() and strike < 3:
+                # Refine sampling on tensor grid:
+                grid[0] = gridRefine(grid[0], prefx)
+                grid[1] = gridRefine(grid[1], prefy)
+                xx, yy = points2D(grid[0],grid[1],self.domain,prefx,prefy)
+                vals = evaluate(g, xx, yy) # Resample
+                vscale = np.max(np.abs(vals[:]))
+                
+                #New Tolerance
+                relTol, absTol = getTol(xx, yy, vals, self.domain, pseudoLevel)
+                prefx.eps = relTol
+                prefy.eps = relTol
+                
+                pivotVal, pivotPos, rowVals, colVals, iFail = completeACA(vals, absTol, factor)
+                
+                if np.abs(pivotVal[0]) < 1e4*vscale*relTol:
+                    strike += 1
+            
+            # If the rank of the function is above maxRank then stop.
+            if (grid > factor*(maxRank-1)+1).any():
+                failure = 1
+                raise RuntimeWarning('CHEBFUN:CHEBFUN2:constructor:rank, Not a low-rank function.')
+            
+            # Check if the column and row slices are resolved.
 
             ## INCOMPLETE
         
@@ -188,6 +218,21 @@ def getTol(xx, yy, vals, dom, pseudoLevel):
     absTol = np.max(np.abs(dom[:])) * max(Jac_norm, vscale) * relTol
 
     return relTol, absTol
+
+def gridRefine( grid, pref):
+    # Hard code grid refinement strategy
+
+    # What tech am I based on?:
+    tech = pref.tech
+
+    # What is the next grid size?
+    if tech == "Chebtech2":
+        # Double sampling on tensor grid:
+        grid = np.power(2,np.floor(np.log2(grid))+1) + 1
+        nesting = np.arange(1,grid+1,2)
+    else:
+        raise RuntimeError('CHEBFUN:CHEBFUN2:constructor:gridRefine:techType, Technology is unrecognized.')
+    return grid, nesting
 
 def completeACA(A, absTol, factor):
     # Adaptive Cross Approximation with complete pivoting. This command is
