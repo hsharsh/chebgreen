@@ -6,7 +6,10 @@ class Chebfun2(ABC):
     def __init__(self,g = None, domain = np.array([-1, 1, -1, 1]), prefx = chebpy.core.settings.DefaultPreferences, prefy = None):
 
         # Default domain is [-1,1] x [-1, 1]
-        self.domain = domain
+        if type(domain) is not np.ndarray:
+            self.domain = np.array(domain)
+        else:
+            self.domain = domain
         self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(g, prefx, prefy)
 
         self.rank = len(self.pivotValues)
@@ -110,45 +113,6 @@ class Chebfun2(ABC):
 def Max(A):
     return np.max(A), np.argmax(A)
 
-def scaleNodes(x, dom):
-    # SCALENODES   Scale the Chebyshev nodes X from [-1,1] to DOM.
-    if dom[0] == -1 and dom[1] == 1:
-        # Nodes are already on [-1, 1]
-        return x
-
-    # Scale the nodes:
-    return dom[2]*(x + 1)/2 + dom[1]*(1 - x)/2
-
-def chebpts(n, dom = chebpy.core.settings.DefaultPreferences.domain, type = 2):
-    #chebpts    Chebyshev points.
-    #   chebpts(N) returns N Chebyshev points of the 2nd-kind in [-1,1].
-    #
-    #   chebpts(N, D), where D is vector of length 2 and N is a scalar integer,
-    #   scales the nodes and weights for the interval [D(1),D(2)].
-
-    ##################################################################################
-    #   [Mathematical reference]:
-    #   Jarg Waldvogel, "Fast construction of the Fejer and Clenshaw-Curtis
-    #   quadrature rules", BIT Numerical Mathematics, 46, (2006), pp 195-202.
-    ##################################################################################
-
-    # Create a dummy CHEBTECH of appropriate type to access static methods.
-    if type == 1:
-        f = chebpy.core.chebtech.Chebtech
-    elif type == 2:
-        f = chebpy.core.chebtech.Chebtech2
-    else:
-        raise Exception('CHEBFUN:chebpts:type, Unknown point type.') 
-
-    if np.size(n) == 1:         # Single grid
-        # Call the static CHEBTECH.CHEBPTS() method:
-        x = f._chebpts(n)
-        # Scale the domain:
-        x = scaleNodes(x, dom)
-    else:                  # Piecewise grid.
-        raise NotImplementedError
-    return x
-
 def points2D(m, n, dom, prefx, prefy):
     # Get the sample points that correspond to the right grid for a particular
     # technology.
@@ -159,14 +123,13 @@ def points2D(m, n, dom, prefx, prefy):
     # What tech am I based on?
     techx, techy = prefx.tech, prefy.tech
     
-    # Check if there is a correct version of chebpts with interval support. chebpts2 does not support intervals
     if techx == "Chebtech2":
-        x = chebpts(m, dom)
+        x = chebpy.core.algorithms.chebpts(m, dom[:2])
     else:
         raise Exception('CHEBFUN:CHEBFUN2:constructor:points2D:tecType, Unrecognized technology')
 
     if techy == "Chebtech2":
-        y = chebpts(n, dom)
+        y = chebpy.core.algorithms.chebpts(n, dom[2:])
     else:
         raise Exception('CHEBFUN:CHEBFUN2:constructor:points2D:tecType, Unrecognized technology')
 

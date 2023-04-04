@@ -15,7 +15,7 @@ class Chebfun:
         self.funs = check_funs(funs)
         self.breakdata = compute_breakdata(self.funs)
         self.transposed = False
-
+        self.coeffs = self.funs[0].coeffs
     @classmethod
     def initempty(cls):
         return cls([])

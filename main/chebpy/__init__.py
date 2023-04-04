@@ -1,4 +1,4 @@
 __version__ = "0.4.3"
 
-from .api import chebfun, pwc
+from .api import chebfun, pwc, chebpts
 from .core.settings import ChebPreferences as UserPreferences
