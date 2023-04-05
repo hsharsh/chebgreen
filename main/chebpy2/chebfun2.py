@@ -3,14 +3,14 @@ import numpy as np
 from abc import ABC, abstractmethod, abstractclassmethod
 
 class Chebfun2(ABC):
-    def __init__(self,g = None, domain = np.array([-1, 1, -1, 1]), prefx = chebpy.core.settings.DefaultPreferences, prefy = None):
+    def __init__(self,g = None, domain = np.array([-1, 1, -1, 1]), prefx = chebpy.core.settings.DefaultPreferences, prefy = None, vectorize = False):
 
         # Default domain is [-1,1] x [-1, 1]
         if type(domain) is not np.ndarray:
             self.domain = np.array(domain)
         else:
             self.domain = domain
-        self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(g, prefx, prefy)
+        self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(g, prefx, prefy, vectorize)
 
         self.rank = len(self.pivotValues)
         self.vscale = 0
@@ -27,16 +27,17 @@ class Chebfun2(ABC):
         return header + toprow + rowdta + btmrow
     
 
-    def constructor(self, g = None, prefx = chebpy.core.settings.DefaultPreferences, prefy = None):
+    def constructor(self, g = None, prefx = chebpy.core.settings.DefaultPreferences, prefy = None, vectorize = False):
 
         # Define this somewhere in a config file
         minSample = np.array([17,17])
+        maxSample = np.array(np.power(2,[prefx.maxpow2,prefy.maxpow2]))
         maxRank = 513
 
         if prefy == None:
             prefy = prefx
         
-        assert (prefx.tech == 'Chebfun2' and prefy.tech == 'Chebfun2'), "CHEBFUN:CHEBFUN2:constructor, Unrecognized technology"
+        assert (prefx.tech == 'Chebtech2' and prefy.tech == 'Chebtech2'), "CHEBFUN:CHEBFUN2:constructor, Unrecognized technology"
         
         pseudoLevel = min(prefx.eps, prefy.eps)
         
@@ -54,7 +55,7 @@ class Chebfun2(ABC):
 
             # Sample function on a Chebyshev tensor grid:
             xx, yy = points2D(grid[0],grid[1],self.domain,prefx,prefy)
-            vals = evaluate(g, xx, yy)
+            vals = evaluate(g, xx, yy, vectorize)
             
             # Does the function blow up or evaluate to nan?:
             vscale = np.max(np.abs(vals[:]))
@@ -70,14 +71,14 @@ class Chebfun2(ABC):
             prefy.eps = relTol
 
             #### Phase 1:
-            # Do GE with complete pivoting
+            # Do GE with complete pivoting:
             pivotVal, pivotPos, rowVals, colVals, iFail = completeACA(vals, absTol, factor)
 
             strike = 1
             while iFail and (grid <= factor*(maxRank-1)+1).any() and strike < 3:
                 # Refine sampling on tensor grid:
-                grid[0] = gridRefine(grid[0], prefx)
-                grid[1] = gridRefine(grid[1], prefy)
+                grid[0], _ = gridRefine(grid[0], prefx)
+                grid[1], _ = gridRefine(grid[1], prefy)
                 xx, yy = points2D(grid[0],grid[1],self.domain,prefx,prefy)
                 vals = evaluate(g, xx, yy) # Resample
                 vscale = np.max(np.abs(vals[:]))
@@ -98,19 +99,82 @@ class Chebfun2(ABC):
                 raise RuntimeWarning('CHEBFUN:CHEBFUN2:constructor:rank, Not a low-rank function.')
             
             # Check if the column and row slices are resolved. Hardcoded for Chebtech2
+            colTech = chebpy.core.chebtech.Chebtech2.initvalues(values = np.sum(colVals,axis = 1), interval = self.domain[2:])
+            resolvedCols = chebpy.core.algorithms.happinessCheck(tech = colTech, vals = colVals, pref = prefy)
+            rowTech = chebpy.core.chebtech.Chebtech2.initvalues(values =  np.sum(rowVals.T, axis = 1), interval = self.domain[:2])
+            resolvedRows = chebpy.core.algorithms.happinessCheck(tech = rowTech, vals = rowVals.T, pref = prefy)
+            isHappy = resolvedRows and resolvedCols
 
-            ## INCOMPLETE
+            if len(pivotVal) == 1 and pivotVal == 0:
+                pivPos = np.array([[0,0]])
+                isHappy = 1
+            else:
+                pivPos = np.array([[xx[0,pivotPos[j,1]], yy[pivotPos[j,0],0]] for j in range(len(pivotVal))])
+                PP = pivotPos
+            
+            #### Phase 2:
+            # Resolve along the column and row slices:
+            n, m = grid[1], grid[0]
 
-         # Remove these
-        colVals = np.zeros((17,5))
-        rowVals = np.zeros((17,5))
-        pivotVal = np.zeros((5))
-        pivotPos = np.zeros((5,2))
+            while not isHappy and not failure:
+                if not resolvedCols:
+                    n, nesting = gridRefine(n, prefy)
+                    xx, yy = np.meshgrid(pivPos[:,0], chebpy.chebpts(n, self.domain[2:], prefy)[0])
+                    colVals = evaluate(g, xx, yy, vectorize)
+                    PP[:,0] = nesting[PP[:,0]]
+                else:
+                    xx, yy = np.meshgrid(pivPos[:,0], chebpy.chebpts(n, self.domain[2:], prefy)[0])
+                    colVals = evaluate(g, xx, yy, vectorize)
+                
+                if not resolvedRows:
+                    m, nesting = gridRefine(m, prefy)
+                    xx, yy = np.meshgrid(chebpy.chebpts(m, self.domain[:2], prefx)[0], pivPos[:,1])
+                    rowVals = evaluate(g, xx, yy, vectorize)
+                    PP[:,1] = nesting[PP[:,1]]
+                else:
+                    xx, yy = np.meshgrid(chebpy.chebpts(m, self.domain[:2], prefx)[0], pivPos[:,1])
+                    rowVals = evaluate(g, xx, yy, vectorize)
+
+                nn = len(pivotVal)
+
+                for kk in range(nn):
+                    colVals[:, kk+1:] = colVals[:, kk+1:] - colVals[:,kk] @ (rowVals[kk, PP[kk+1:nn,1]]/pivotVal[kk])
+                    rowVals[kk+1:, :] = rowVals[kk+1:, :] - colVals[PP[kk+1:nn,0], kk] @ (rowVals[kk,:]/pivotVal[kk])
+
+                # !!! Check if this is correct
+                if nn == 1:
+                    rowVals = rowVals.T
+
+                # Are the columns and rows resolved now?
+                if not resolvedCols:
+                    colTech = chebpy.core.chebtech.Chebtech2.initvalues(values = np.sum(colVals,axis = 1), interval = self.domain[2:])
+                    resolvedCols = chebpy.core.algorithms.happinessCheck(tech = colTech, vals = colVals, pref = prefy)
+
+                if not resolvedRows:
+                    rowTech = chebpy.core.chebtech.Chebtech2.initvalues(values =  np.sum(rowVals.T, axis = 1), interval = self.domain[:2])
+                    resolvedRows = chebpy.core.algorithms.happinessCheck(tech = rowTech, vals = rowVals.T, pref = prefy)
+
+                isHappy = resolvedRows and resolvedCols
+
+                # Stop if degree is over maxLength
+                sampleCheck = [m,n] < maxSample
+                if not sampleCheck.all():
+                    raise RuntimeWarning(f'CHEBFUN:CHEBFUN2:constructor:notResolved, Unresolved with maximum CHEBFUN length:{maxSample[np.argwhere(~sampleCheck)[0,0]]}')
+                
+        # !! Check if this is needed/correct
+        if np.linalg.norm(colVals) == 0 or np.linalg.norm(rowVals) == 0:
+            colVals = 0
+            rowVals = 0
+            pivotVal = np.inf
+            pivotPos = np.array([0,0])
+            isHappy = 1
 
         cols = chebpy.chebfun(colVals, np.array(self.domain[2:]), pref = prefy)    # This should be a quasimatrix
         rows = chebpy.chebfun(rowVals, np.array(self.domain[:2]), pref = prefx)    # This should be a quasimatrix
         pivotValues = pivotVal
         pivotLocations = pivotPos
+
+        # Write a Sample Test
         
         return cols, rows, pivotValues, pivotLocations
 
@@ -128,12 +192,12 @@ def points2D(m, n, dom, prefx, prefy):
     techx, techy = prefx.tech, prefy.tech
     
     if techx == "Chebtech2":
-        x = chebpy.core.algorithms.chebpts(m, dom[:2])
+        x = chebpy.chebpts(m, dom[:2])
     else:
         raise Exception('CHEBFUN:CHEBFUN2:constructor:points2D:tecType, Unrecognized technology')
 
     if techy == "Chebtech2":
-        y = chebpy.core.algorithms.chebpts(n, dom[2:])
+        y = chebpy.chebpts(n, dom[2:])
     else:
         raise Exception('CHEBFUN:CHEBFUN2:constructor:points2D:tecType, Unrecognized technology')
 
@@ -142,11 +206,11 @@ def points2D(m, n, dom, prefx, prefy):
 
 
 
-def evaluate(op, xx, yy, flag = 0):
+def evaluate(op, xx, yy, vectorize = 0):
     # EVALUATE  Wrap the function handle in a FOR loop if the vectorize flag is
     # turned on.
 
-    if(flag):
+    if(vectorize):
         vals = np.zeros((yy.shape[0], xx.shape[1]))
         for jj in range(yy.shape[0]):
             for kk in range(xx.shape[1]):
@@ -210,8 +274,8 @@ def completeACA(A, absTol, factor):
     nx, ny = A.shape
     width = min(nx, ny)        # Use to tell us how many pivots we can take.
     pivotValue = np.empty(int(np.ceil(width/factor)))         # Store an unknown number of Pivot values.
-    pivotElement = np.empty((int(np.ceil(width/factor)),2)) # Store (j,k) entries of pivot location.
-    pivotValue[:], pivotElement[:] = np.nan, np.nan
+    pivotElement = np.empty((int(np.ceil(width/factor)),2), dtype = np.int64) # Store (j,k) entries of pivot location.
+    pivotValue[:], pivotElement[:] = np.nan, -1
     ifail = 1                  # Assume we fail.
 
     # Main algorithm
