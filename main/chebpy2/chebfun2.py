@@ -32,7 +32,7 @@ class Chebfun2(ABC):
         # Define this somewhere in a config file
         minSample = np.array([17,17])
         maxSample = np.array(np.power(2,[prefx.maxpow2,prefy.maxpow2]))
-        maxRank = 513
+        maxRank = np.array([513,513])
 
         if prefy == None:
             prefy = prefx
@@ -90,6 +90,7 @@ class Chebfun2(ABC):
                 
                 pivotVal, pivotPos, rowVals, colVals, iFail = completeACA(vals, absTol, factor)
                 
+                # If the function is 0+noise then stop after three strikes.
                 if np.abs(pivotVal[0]) < 1e4*vscale*relTol:
                     strike += 1
             
@@ -177,6 +178,15 @@ class Chebfun2(ABC):
         # Write a Sample Test
         
         return cols, rows, pivotValues, pivotLocations
+    
+    # --------------------
+    #  operator overloads
+    # --------------------
+    def __add__(self, f):
+        raise NotImplementedError
+
+    def __call__(self, x, y):
+        raise NotImplementedError
 
 def Max(A):
     return np.max(A), np.argmax(A)
