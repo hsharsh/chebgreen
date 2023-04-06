@@ -42,7 +42,7 @@ def chebfun(f = None, domain = _preferences.domain, n = None, pref = _preference
             _preferences.reset()
             return cf
         else:
-            cf = np.array([Chebfun.initvalues(f[:,i], domain) for i in range(f.shape[1])]).reshape((1,-1))
+            cf = np.array([Chebfun.initvalues(f[:,i], domain) for i in range(f.shape[1])])
             _preferences.reset()
             return cf
     try:

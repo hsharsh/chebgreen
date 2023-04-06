@@ -1,6 +1,7 @@
 import chebpy
 import numpy as np
 from abc import ABC, abstractmethod, abstractclassmethod
+from .quasimatrix import Quasimatrix
 
 class Chebfun2(ABC):
     def __init__(self,g = None, domain = np.array([-1, 1, -1, 1]), prefx = chebpy.core.settings.DefaultPreferences, prefy = None, vectorize = False):
@@ -170,8 +171,8 @@ class Chebfun2(ABC):
             pivotPos = np.array([0,0])
             isHappy = 1
 
-        cols = chebpy.chebfun(colVals, np.array(self.domain[2:]), pref = prefy)    # This should be a quasimatrix
-        rows = chebpy.chebfun(rowVals, np.array(self.domain[:2]), pref = prefx)    # This should be a quasimatrix
+        cols = Quasimatrix(data = chebpy.chebfun(colVals, np.array(self.domain[2:]), pref = prefy), transposed = False) 
+        rows = Quasimatrix(data = chebpy.chebfun(rowVals, np.array(self.domain[:2]), pref = prefx), transposed = True)
         pivotValues = pivotVal
         pivotLocations = pivotPos
 
