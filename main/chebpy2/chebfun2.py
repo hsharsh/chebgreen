@@ -187,6 +187,12 @@ class Chebfun2(ABC):
         raise NotImplementedError
 
     def __call__(self, x, y):
+        """
+        Implement using quasimatrix.
+        Write the faster evaluation using meshgrid because it will be useful for plotting and stuff?
+
+        ????
+        """
         raise NotImplementedError
 
 def Max(A):
@@ -248,7 +254,7 @@ def getTol(xx, yy, vals, dom, pseudoLevel):
         dfdy = np.diff(vals[:,:n-1],1,0) / np.diff(yy[:,:n-1],1,0) # yy diffs row-wise.
     elif m > 1 and n == 1:
         # Constant in x-direction
-        dfdy = np.diff(vals,1,1) / np.diff(yy,1,1);
+        dfdy = np.diff(vals,1,1) / np.diff(yy,1,1)
     elif m == 1 and n > 1:
         # Constant in y-direction
         dfdx = np.diff(vals,1,2) / np.diff(xx,1,2)
