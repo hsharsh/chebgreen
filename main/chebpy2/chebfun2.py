@@ -188,7 +188,7 @@ class Chebfun2(ABC):
 
     def __call__(self, x, y):
         """
-        Implement using quasimatrix.
+        Implement using quasimatrix. Will need to implement matrix mult
         Write the faster evaluation using meshgrid because it will be useful for plotting and stuff?
 
         ????

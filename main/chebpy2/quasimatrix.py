@@ -8,7 +8,7 @@ class Quasimatrix(ABC):
         # Currently only initialized with a numpy array of chebfuns
         self.data = data
         self.transposed = transposed
-
+        
     def __getitem__(self, key):
         x, y = key
         
@@ -33,7 +33,38 @@ class Quasimatrix(ABC):
                 return Quasimatrix(data = self.data[x], transposed = self.transposed)
             else:
                 raise RuntimeError('The second index needs to be a float or a numpy array of floats')
-            
+    
+    def __add__(self, qmat):
+        # Addition of quasimatrices
+        assert self.shape == qmat.shape, f"Cannot add a ({self.shape[0]} x {self.shape[1]}) matrix to a ({qmat.shape[0]} x {qmat.shape[1]}) matrix."
+        return Quasimatrix(data = self.data + qmat.data, transposed = self.transposed)
+
+    def __mul__(self, qmat):
+        # Multiplication of quasimatrices
+        assert self.shape[1] == qmat.shape[0], f"Cannot mulitply a ({self.shape[0]} x {self.shape[1]}) matrix with a ({qmat.shape[0]} x {qmat.shape[1]}) matrix."
+        
+        if self.shape[1] == np.inf:
+            mat = np.zeros((self.shape[0],qmat.shape[1]))
+            for i in range(self.shape[0]):
+                for j in range(qmat.shape[1]):
+                    mat[i,j] = (self.data[i] * qmat.data[j]).sum()
+        else:
+            raise NotImplementedError
+        
+    ### Properties
+    @property
+    def shape(self):
+        if not self.transposed:
+            return np.inf, len(self.data)
+        else:
+            return len(self.data), np.inf
+        
+    @property
+    def T(self):
+        # Tranpose of a quasimatrix
+        return Quasimatrix(data = self.data, transposed = not self.transposed)       
+
+    ###  Utilities
     def plot(self, ax=None, **kwds):
         if isinstance(self.data,chebpy.core.chebfun.Chebfun):
             self.data.plot(ax = None, **kwds)
