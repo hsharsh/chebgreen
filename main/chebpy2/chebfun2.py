@@ -186,7 +186,7 @@ class Chebfun2(ABC):
     def __add__(self, f):
         raise NotImplementedError
 
-    def __call__(self, x, y):
+    def __get__item(self, x, y):
         """
         Implement using quasimatrix. Will need to implement matrix mult
         Write the faster evaluation using meshgrid because it will be useful for plotting and stuff?
@@ -194,6 +194,13 @@ class Chebfun2(ABC):
         ????
         """
         raise NotImplementedError
+
+        
+    
+    # Properties
+    @property
+    def cdr(self):
+        return self.cols, self.pivotValues, self.rows
 
 def Max(A):
     return np.max(A), np.argmax(A)

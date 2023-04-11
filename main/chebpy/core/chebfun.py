@@ -161,7 +161,9 @@ class Chebfun:
 
     def __sub__(self, f):
         return self._apply_binop(f, operator.sub)
-
+    
+    # def innerproduct(self,g):
+    #     return self._apply_binop(g, innerpr)
     # ------------------
     #  internal helpers
     # ------------------

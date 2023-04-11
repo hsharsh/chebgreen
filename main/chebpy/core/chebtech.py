@@ -18,6 +18,8 @@ from .algorithms import (
     newtonroots,
     standard_chop,
 )
+from .ffts import fft, ifft
+from .algorithms import quadwts2
 from .plotting import import_plt, plotfun, plotfuncoeffs
 from .utilities import Interval, coerce_list
 
@@ -210,7 +212,7 @@ class Chebtech(Smoothfun, ABC):
     def values(self):
         """Function values at Chebyshev points"""
         return coeffs2vals2(self.coeffs)
-
+            
     # ---------
     #  algebra
     # ---------

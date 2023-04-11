@@ -344,3 +344,65 @@ def newtonroots(fun, rts, tol=None, maxiter=None):
             prv = rts
             rts = rts - fun(rts) / dfun(rts)
     return rts
+
+def quadwts(n):
+    """
+    quadwts(N) returns the N weights for quadrature on 1st-kind Chebyshev grid.
+    """
+
+    if n == 0:                          # Special case (no points!)
+        return []
+    elif n == 1:                        # Special case (single point)
+        return 2
+    else:                               # General case
+        m = 2 / np.append(np.array([1]), 1-np.power(np.arange(2,n,2),2))  # Moments - Exact integrals of T_k (even)
+        
+        # Mirror the vector for the use of ifft: 
+        if n % 2:
+            c = np.append(m, -m[np.arange(int((n+1)/2)-1, 0, -1)])    # n is odd 
+        else:
+            c = np.append(m, 0)
+            c = np.append(c, -m[np.arange(int(n/2)-1, 0, -1)])            # n is even
+
+        v = np.exp(complex(1j) * (np.arange(n)) * np.pi/n)      # weight (rotation) vector
+        c = c * v                           # Apply the weight vector
+        return ifft(c).real                 # Call ifft
+
+def quadwts2(n):
+    """
+    quadwts2(N) returns the N weights for quadrature on 2st-kind Chebyshev grid.
+    """
+
+    if n == 0:                          # Special case (no points!)
+        return []
+    elif n == 1:                        # Special case (single point)
+        return 2
+    else:                               # General case
+        c = 2 / np.append(np.array([1]), 1-np.power(np.arange(2,n,2),2))    # Exact integrals of T_k (even)
+        c = np.append(c, c[np.arange(int(np.floor(n/2))-1, 0,-1)])               # Mirror for DCT via FFT
+        w = ifft(c).real                                                         # Interior weights
+        # Boundary weights
+        w[0] /= 2
+        w = np.append(w, w[0])
+    return w.reshape((-1,1))
+
+def innerproduct(f, g):
+    newdom = f.domain.union(f.domain)
+    chbfn1 = f._break(newdom)
+    chbfn2 = g._break(newdom)
+    out = 0
+    for fun1, fun2 in zip(chbfn1, chbfn2):
+        n = len(fun1.coeffs) + len(fun2.coeffs)
+        fun1 = fun1.onefun.prolong(n)
+        fun2 = fun2.onefun.prolong(n)
+
+        # Compute Clenshaw-Curtis quadrature weights:
+        w = quadwts2(n)
+
+        # Compute the inner product via a weighted discrete inner product:
+        fvalues = fun1._coeffs2vals(fun1.coeffs).reshape((-1,1)) 
+        gvalues = fun2._coeffs2vals(fun2.coeffs).reshape((-1,1)) 
+
+        out += (w * fvalues).T @ gvalues
+
+    return out

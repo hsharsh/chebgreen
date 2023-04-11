@@ -7,6 +7,8 @@ class Quasimatrix(ABC):
     def __init__(self, data, transposed = False):
         # Currently only initialized with a numpy array of chebfuns
         self.data = data
+        if self.data is not None:
+            self.domain = self.data[0].domain
         self.transposed = transposed
         
     def __getitem__(self, key):
@@ -39,18 +41,54 @@ class Quasimatrix(ABC):
         assert self.shape == qmat.shape, f"Cannot add a ({self.shape[0]} x {self.shape[1]}) matrix to a ({qmat.shape[0]} x {qmat.shape[1]}) matrix."
         return Quasimatrix(data = self.data + qmat.data, transposed = self.transposed)
 
-    def __mul__(self, qmat):
-        # Multiplication of quasimatrices
-        assert self.shape[1] == qmat.shape[0], f"Cannot mulitply a ({self.shape[0]} x {self.shape[1]}) matrix with a ({qmat.shape[0]} x {qmat.shape[1]}) matrix."
+    # def __mul__(self, qmat):
+    #     # Multiplication of quasimatrices
+    #     assert self.shape[1] == qmat.shape[0], f"Cannot mulitply a ({self.shape[0]} x {self.shape[1]}) matrix with a ({qmat.shape[0]} x {qmat.shape[1]}) matrix."
         
-        if self.shape[1] == np.inf:
-            mat = np.zeros((self.shape[0],qmat.shape[1]))
-            for i in range(self.shape[0]):
-                for j in range(qmat.shape[1]):
-                    mat[i,j] = (self.data[i] * qmat.data[j]).sum()
+    #     if self.shape[1] == np.inf:
+    #         mat = np.zeros((self.shape[0],qmat.shape[1]))
+    #         for i in range(self.shape[0]):
+    #             for j in range(qmat.shape[1]):
+    #                 mat[i,j] = chebpy.core.algorithms.innerproduct(self.data[i],qmat.data[j])
+    #     else:
+    #         raise NotImplementedError
+
+    def __mul__(self, G):
+        """
+        Multiplication of quasimatrices
+
+        Here, I am assuming that the quasimatrices only comprises of chebfuns which
+        are of the same rank within a quasimatrix and that each chebfun only has one
+        single interval.
+        Faster but uses more space.
+        """
+        F = self
+        assert F.shape[1] == G.shape[0], f"Cannot mulitply a ({F.shape[0]} x {F.shape[1]}) matrix with a ({G.shape[0]} x {G.shape[1]}) matrix."
+        
+        if F.shape[1] == np.inf: 
+            assert F.domain == G.domain, "Cannot multiply quasimatrices on different domains"
+            out = 0
+            m, n = F.shape[0], G.shape[1]
+            
+            N = len(F.data[0].coeffs) + len(G.data[0].coeffs) - 1
+            Fvalues = np.zeros((m,N))
+            Gvalues = np.zeros((N,n))
+            
+            
+            for i in range(m):
+                f = F.data[i].funs[0].onefun._coeffs2vals(F.data[i].funs[0].coeffs)
+                Fvalues[i,:len(f)] = f
+            
+            for j in range(n):
+                g = G.data[j].funs[0].onefun._coeffs2vals(G.data[j].funs[0].coeffs)
+                Gvalues[:len(g),j] = g
+                
+            w = chebpy.core.algorithms.quadwts2(N).reshape((1,-1))
+            
+            return (w * Fvalues) @ Gvalues
         else:
             raise NotImplementedError
-        
+            
     ### Properties
     @property
     def shape(self):
