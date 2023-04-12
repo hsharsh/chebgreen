@@ -393,6 +393,7 @@ def innerproduct(f, g):
     out = 0
     for fun1, fun2 in zip(chbfn1, chbfn2):
         n = len(fun1.coeffs) + len(fun2.coeffs)
+        rescaleFactor = 0.5 *  float(np.diff(fun1.interval))
         fun1 = fun1.onefun.prolong(n)
         fun2 = fun2.onefun.prolong(n)
 
@@ -403,6 +404,6 @@ def innerproduct(f, g):
         fvalues = fun1._coeffs2vals(fun1.coeffs).reshape((-1,1)) 
         gvalues = fun2._coeffs2vals(fun2.coeffs).reshape((-1,1)) 
 
-        out += (w * fvalues).T @ gvalues
+        out += (w * fvalues).T @ gvalues * rescaleFactor
 
     return out

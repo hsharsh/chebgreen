@@ -6,7 +6,7 @@ class Quasimatrix(ABC):
     """Create a Quasimatrix in order to implement most functionality for the chebfun2 constructor"""
     def __init__(self, data, transposed = False):
         # Currently only initialized with a numpy array of chebfuns
-        self.data = data
+        self.data = np.array(data).reshape(-1)
         if self.data is not None:
             self.domain = self.data[0].domain
         self.transposed = transposed
@@ -20,9 +20,9 @@ class Quasimatrix(ABC):
             if isinstance(x,int) or isinstance(x,float):
                 return np.array([col(x) for col in self.data[y]])
             elif isinstance(x,np.ndarray) and (x.dtype == np.int64 or x.dtype == np.float64):
-                return np.array([col(x) for col in self.data[y]])
+                return np.array([col(x) for col in self.data[y]]).T
             elif (x == slice(None)):
-                return Quasimatrix(data = self.data[y], transposed = self.transposed)
+                return Quasimatrix(data = np.array(self.data[y]).reshape(-1), transposed = self.transposed)
             else:
                 raise RuntimeError('The first index needs to be a float or a numpy array of floats')
         else:
@@ -30,9 +30,9 @@ class Quasimatrix(ABC):
             if isinstance(y,int) or isinstance(y,float):
                 return np.array([row(y) for row in self.data[x]])
             elif isinstance(y,np.ndarray) and (y.dtype == np.int64 or y.dtype == np.float64):
-                return np.array([row(y) for row in self.data[x]]).T
+                return np.array([row(y) for row in self.data[x]])
             elif y == slice(None):
-                return Quasimatrix(data = self.data[x], transposed = self.transposed)
+                return Quasimatrix(data = np.array(self.data[x]).reshape(-1), transposed = self.transposed)
             else:
                 raise RuntimeError('The second index needs to be a float or a numpy array of floats')
     
@@ -70,22 +70,27 @@ class Quasimatrix(ABC):
             out = 0
             m, n = F.shape[0], G.shape[1]
             
-            N = len(F.data[0].coeffs) + len(G.data[0].coeffs) - 1
+            N = len(F.data[0].coeffs) + len(G.data[0].coeffs)
             Fvalues = np.zeros((m,N))
             Gvalues = np.zeros((N,n))
             
-            
+            prolongtemp = np.zeros(N)
             for i in range(m):
-                f = F.data[i].funs[0].onefun._coeffs2vals(F.data[i].funs[0].coeffs)
+                f = F.data[i].funs[0]
+                prolongtemp[:len(f.coeffs)] = f.coeffs
+                f = f.onefun._coeffs2vals(prolongtemp)
                 Fvalues[i,:len(f)] = f
             
             for j in range(n):
-                g = G.data[j].funs[0].onefun._coeffs2vals(G.data[j].funs[0].coeffs)
+                g = G.data[j].funs[0]
+                prolongtemp[:len(g.coeffs)] = g.coeffs
+                g = g.onefun._coeffs2vals(prolongtemp)
                 Gvalues[:len(g),j] = g
                 
             w = chebpy.core.algorithms.quadwts2(N).reshape((1,-1))
+            rescalingFactor = 0.5 * float(np.diff(F.domain))
             
-            return (w * Fvalues) @ Gvalues
+            return (w * Fvalues) @ Gvalues * rescalingFactor
         else:
             raise NotImplementedError
             

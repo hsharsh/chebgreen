@@ -104,7 +104,7 @@ class Chebfun2(ABC):
             colTech = chebpy.core.chebtech.Chebtech2.initvalues(values = np.sum(colVals,axis = 1), interval = self.domain[2:])
             resolvedCols = chebpy.core.algorithms.happinessCheck(tech = colTech, vals = colVals, pref = prefy)
             rowTech = chebpy.core.chebtech.Chebtech2.initvalues(values =  np.sum(rowVals.T, axis = 1), interval = self.domain[:2])
-            resolvedRows = chebpy.core.algorithms.happinessCheck(tech = rowTech, vals = rowVals.T, pref = prefy)
+            resolvedRows = chebpy.core.algorithms.happinessCheck(tech = rowTech, vals = rowVals.T, pref = prefx)
             isHappy = resolvedRows and resolvedCols
 
             if len(pivotVal) == 1 and pivotVal == 0:
@@ -154,7 +154,7 @@ class Chebfun2(ABC):
 
                 if not resolvedRows:
                     rowTech = chebpy.core.chebtech.Chebtech2.initvalues(values =  np.sum(rowVals.T, axis = 1), interval = self.domain[:2])
-                    resolvedRows = chebpy.core.algorithms.happinessCheck(tech = rowTech, vals = rowVals.T, pref = prefy)
+                    resolvedRows = chebpy.core.algorithms.happinessCheck(tech = rowTech, vals = rowVals.T, pref = prefx)
 
                 isHappy = resolvedRows and resolvedCols
 
@@ -172,7 +172,7 @@ class Chebfun2(ABC):
             isHappy = 1
 
         cols = Quasimatrix(data = chebpy.chebfun(colVals, np.array(self.domain[2:]), pref = prefy), transposed = False) 
-        rows = Quasimatrix(data = chebpy.chebfun(rowVals, np.array(self.domain[:2]), pref = prefx), transposed = True)
+        rows = Quasimatrix(data = chebpy.chebfun(rowVals.T, np.array(self.domain[:2]), pref = prefx), transposed = True)
         pivotValues = pivotVal
         pivotLocations = pivotPos
 
@@ -186,21 +186,29 @@ class Chebfun2(ABC):
     def __add__(self, f):
         raise NotImplementedError
 
-    def __get__item(self, x, y):
+    def __getitem__(self, x, y):
         """
         Implement using quasimatrix. Will need to implement matrix mult
         Write the faster evaluation using meshgrid because it will be useful for plotting and stuff?
 
         ????
         """
+        # if x == slice(None) and y == slice(None):
+        #     return self
+        # if x == slice(None):
+        #     if (isinstance(y,int) or isinstance(y,float)):
+        #         y = np.array(y)
+        #     if x == slice(None) and (y.dtype == np.int64 or y.dtype == np.float64):
+        #         y = y.reshape((-1,1))
+        #         return self.cols[y] * 
+            
         raise NotImplementedError
-
         
     
     # Properties
     @property
     def cdr(self):
-        return self.cols, self.pivotValues, self.rows
+        return self.cols, np.diag(self.pivotValues), self.rows
 
 def Max(A):
     return np.max(A), np.argmax(A)
