@@ -186,21 +186,25 @@ class Chebfun2(ABC):
     def __add__(self, f):
         raise NotImplementedError
 
-    def __getitem__(self, x, y):
+    def __getitem__(self, key):
         """
         Implement using quasimatrix. Will need to implement matrix mult
         Write the faster evaluation using meshgrid because it will be useful for plotting and stuff?
 
         ????
         """
-        # if x == slice(None) and y == slice(None):
-        #     return self
-        # if x == slice(None):
-        #     if (isinstance(y,int) or isinstance(y,float)):
-        #         y = np.array(y)
-        #     if x == slice(None) and (y.dtype == np.int64 or y.dtype == np.float64):
-        #         y = y.reshape((-1,1))
-        #         return self.cols[y] * 
+        x, y = key
+        if (isinstance(x,slice) and x == slice(None)) and (isinstance(y,slice) and y == slice(None)):
+            return self
+        C,D,R = self.cdr
+
+        if (isinstance(x,slice) and x == slice(None)):
+            if (isinstance(y,int) or isinstance(y,float)):
+                y = np.array(y)
+            if y.dtype == np.int64 or y.dtype == np.float64:
+                # Make evaluation points a vector.
+                y = y.reshape(-1)
+                return C[y,:] @ D * R
             
         raise NotImplementedError
         

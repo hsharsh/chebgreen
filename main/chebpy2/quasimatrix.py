@@ -10,7 +10,17 @@ class Quasimatrix(ABC):
         if self.data is not None:
             self.domain = self.data[0].domain
         self.transposed = transposed
-        
+    
+    # Disable matrix multiplication from numpy with broadcasting while right multiplying.
+    __array_ufunc__ = None
+
+    def __repr__(self):
+        if not self.transposed:
+            header = f"Quasimatrix of shape ({self.shape[0]} x {self.shape[1]}) with columns:\n"
+        else:
+            header = f"Quasimatrix of shape ({self.shape[1]} x {self.shape[0]}) with rows:\n"
+        return header + self.data.__repr__()
+            
     def __getitem__(self, key):
         x, y = key
         
@@ -62,8 +72,19 @@ class Quasimatrix(ABC):
         single interval.
         Faster but uses more space.
         """
-        F = self
+        F = self 
+
+        if isinstance(G,int) or isinstance(G,float):
+            return Quasimatrix(F.data * G, transposed = F.transposed)
+
+        # Check if the inputs can be multiplied
         assert F.shape[1] == G.shape[0], f"Cannot mulitply a ({F.shape[0]} x {F.shape[1]}) matrix with a ({G.shape[0]} x {G.shape[1]}) matrix."
+        
+        if isinstance(G,np.ndarray) and (G.dtype == np.int64 or G.dtype == np.float64):
+            if F.transposed:
+                return Quasimatrix(data = F.data.reshape((1,-1)) @ G, transposed = F.transposed)   # Returns (inf x G.shape[1]) matrix
+            else:
+                RuntimeError('Invalid multiplication')  # This should never be reached because of shape check
         
         if F.shape[1] == np.inf: 
             assert F.domain == G.domain, "Cannot multiply quasimatrices on different domains"
@@ -93,11 +114,66 @@ class Quasimatrix(ABC):
             return (w * Fvalues) @ Gvalues * rescalingFactor
         else:
             raise NotImplementedError
+
+    def __rmul__(self, F):
+        """
+        Multiplication of quasimatrices
+
+        Here, I am assuming that the quasimatrices only comprises of chebfuns which
+        are of the same rank within a quasimatrix and that each chebfun only has one
+        single interval.
+        Faster but uses more space.
+        """
+        G = self 
+
+        if isinstance(F,int) or isinstance(F,float):
+            return Quasimatrix(F * G.data, transposed = G.transposed)
+
+        # Check if the inputs can be multiplied
+        assert F.shape[1] == G.shape[0], f"Cannot mulitply a ({F.shape[0]} x {F.shape[1]}) matrix with a ({G.shape[0]} x {G.shape[1]}) matrix."
+
+        if isinstance(F,np.ndarray) and (F.dtype == np.int64 or F.dtype == np.float64):
+            if not G.transposed:
+                return Quasimatrix(data = (F @ G.data.reshape((-1,1))), transposed = G.transposed)   # Returns (G.shape[0] x inf) matrix
+            else:
+                RuntimeError('Invalid multiplication')  # This should never be reached because of shape check
+        
+        if F.shape[1] == np.inf: 
+            assert F.domain == G.domain, "Cannot multiply quasimatrices on different domains"
+            out = 0
+            m, n = F.shape[0], G.shape[1]
             
+            N = len(F.data[0].coeffs) + len(G.data[0].coeffs)
+            Fvalues = np.zeros((m,N))
+            Gvalues = np.zeros((N,n))
+            
+            prolongtemp = np.zeros(N)
+            for i in range(m):
+                f = F.data[i].funs[0]
+                prolongtemp[:len(f.coeffs)] = f.coeffs
+                f = f.onefun._coeffs2vals(prolongtemp)
+                Fvalues[i,:len(f)] = f
+            
+            for j in range(n):
+                g = G.data[j].funs[0]
+                prolongtemp[:len(g.coeffs)] = g.coeffs
+                g = g.onefun._coeffs2vals(prolongtemp)
+                Gvalues[:len(g),j] = g
+                
+            w = chebpy.core.algorithms.quadwts2(N).reshape((1,-1))
+            rescalingFactor = 0.5 * float(np.diff(F.domain))
+            
+            return (w * Fvalues) @ Gvalues * rescalingFactor
+        else:
+            raise NotImplementedError        
+    # def __rmul__(self,G):
+    #     F = self
+    #     if (isinstance(G,int) or isinstance(G,float)) or (isinstance(G,np.ndarray) and (G.dtype == np.int64 or G.dtype == np.float64)):
+    #         return Quasimatrix(G * F.data, transposed = F.transposed)         
     ### Properties
     @property
     def shape(self):
-        if not self.transposed:
+        if self.transposed:
             return np.inf, len(self.data)
         else:
             return len(self.data), np.inf

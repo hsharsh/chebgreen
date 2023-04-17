@@ -116,10 +116,10 @@ class Chebfun:
 
     @self_empty("chebfun<empty>")
     def __repr__(self):
-        rowcol = "row" if self.transposed else "column"
+        # rowcol = "row" if self.transposed else "column"
         numpcs = self.funs.size
         plural = "" if numpcs == 1 else "s"
-        header = "chebfun {} ({} smooth piece{})\n".format(rowcol, numpcs, plural)
+        header = "chebfun ({} smooth piece{})\n".format(numpcs, plural)
         toprow = "       interval       length     endpoint values\n"
         tmplat = "[{:8.2g},{:8.2g}]   {:6}  {:8.2g} {:8.2g}\n"
         rowdta = ""
@@ -153,17 +153,15 @@ class Chebfun:
     __radd__ = __add__
 
     def __str__(self):
-        rowcol = "row" if self.transposed else "col"
-        out = "<chebfun-{},{},{}>\n".format(
-            rowcol, self.funs.size, sum([f.size for f in self])
+        # rowcol = "row" if self.transposed else "col"
+        out = "<chebfun,{},{}>\n".format(
+            self.funs.size, sum([f.size for f in self])
         )
         return out
 
     def __sub__(self, f):
         return self._apply_binop(f, operator.sub)
-    
-    # def innerproduct(self,g):
-    #     return self._apply_binop(g, innerpr)
+           
     # ------------------
     #  internal helpers
     # ------------------
