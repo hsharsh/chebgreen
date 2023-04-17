@@ -18,7 +18,7 @@ class Quasimatrix(ABC):
         if not self.transposed:
             header = f"Quasimatrix of shape ({self.shape[0]} x {self.shape[1]}) with columns:\n"
         else:
-            header = f"Quasimatrix of shape ({self.shape[1]} x {self.shape[0]}) with rows:\n"
+            header = f"Quasimatrix of shape ({self.shape[0]} x {self.shape[1]}) with rows:\n"
         return header + self.data.__repr__()
             
     def __getitem__(self, key):

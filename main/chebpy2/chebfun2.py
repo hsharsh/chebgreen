@@ -204,7 +204,7 @@ class Chebfun2(ABC):
             if y.dtype == np.int64 or y.dtype == np.float64:
                 # Make evaluation points a vector.
                 y = y.reshape(-1)
-                return C[y,:] @ D * R
+                return C[y,:] @ D * R.T
             
         raise NotImplementedError
         
