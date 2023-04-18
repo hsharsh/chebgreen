@@ -215,23 +215,30 @@ class Chebfun2(ABC):
                 x = x.reshape(-1)
                 return C * (D @ R[:,x])
 
-        # eps = np.finfo(np.float64).eps
-        # if isinstance(x,np.ndarray) and isinstance(y,np.ndarray) and min(x.shape) > 1 and x.shape == y.shape and len(x.shape) == 2:
-        #     if np.max(x - x[0:1,:]) <= 10*eps and np.max(y - y[:,0:1]) < 10*eps:
-        #         x, y = x[0,:], y[:,0]
-        #     elif np.max(y - y[0:1,:]) <= 10*eps and np.max(x - x[:,0:1]) < 10*eps:
-        #         x, y = x[:,0], y[0,:]
-        #     else:
-        #         # Evaluate at matrices, but they are not from meshgrid:
-        #         m, n = x.shape
-        #         out = np.zeros((m,n))
+        eps = np.finfo(np.float64).eps
+        if isinstance(x,np.ndarray) and isinstance(y,np.ndarray) and min(x.shape) > 1 and x.shape == y.shape and len(x.shape) == 2:
+            if np.max(x - x[0:1,:]) <= 10*eps and np.max(y - y[:,0:1]) < 10*eps:
+                x, y = x[0,:], y[:,0]
+                return C[y,:] @ D @ R[:,x]
+            elif np.max(y - y[0:1,:]) <= 10*eps and np.max(x - x[:,0:1]) < 10*eps:
+                x, y = x[:,0], y[0,:]
+                return (C[y,:] @ D @ R[:,x]).T
+            else:
+                # Evaluate at matrices, but they are not from meshgrid:
+                m, n = x.shape
+                # out = np.zeros((m,n))
 
-        #         # Unroll the loop that is the longest
-        #         if m > n:
-        #             for i in range(n):
-        #                 out[:,i] = 
-
-        raise NotImplementedError
+                # Unroll the loop that is the longest
+                if m > n:
+                    out = np.array([np.sum(C[y[:,i],:] @ D * R[:,x[:,i]].T, axis = 1) for i in range(n)]).T
+                else:
+                    out = np.array([np.sum(C[y[j,:],:] @ D * R[:,x[j,:]].T, axis = 1) for j in range(m)])
+        if isinstance(x,np.ndarray) and isinstance(y,np.ndarray) and x.shape == y.shape and (len(x.shape) == 1 or min(x.shape) == 1):
+            shape = x.shape
+            x, y = x.reshape(-1), y.reshape(-1)
+            return (C[y,:] * R[:,x].T @ np.diag(D)).reshape(shape)
+        
+        raise NotImplementedError('Cannot evaluate chebfun2 object with given inputs')
         
     
     # Properties
