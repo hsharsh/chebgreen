@@ -8,11 +8,13 @@ techy       = prefy.tech();
 tprefx      = techx.techPref;
 tprefy      = techy.techPref;
 minSample   = [tprefx.minSamples, tprefy.minSamples];
+
 maxSample   = [tprefx.maxLength, tprefy.maxLength];
 sampleTest  = prefx.cheb2Prefs.sampleTest | prefy.cheb2Prefs.sampleTest;
 maxRank     = [prefx.cheb2Prefs.maxRank, prefy.cheb2Prefs.maxRank];
 pseudoLevel = min(prefx.cheb2Prefs.chebfun2eps, prefy.cheb2Prefs.chebfun2eps);
 dom = [0,1, 0 1];
+vectorize = true;
 isTrig = [false false];
 op = @green;
 
@@ -51,6 +53,74 @@ prefy.chebfuneps = relTol;
 % Do GE with complete pivoting:
 [pivotVal, pivotPos, rowVals, colVals, iFail] = completeACA(vals, absTol, factor);
 
+strike = 1;
+% grid <= 4*(maxRank-1)+1, see Chebfun2 paper.
+while ( iFail && all(grid <= factor*(maxRank-1)+1) && strike < 3)
+    % Refine sampling on tensor grid:
+    grid(1) = gridRefine(grid(1), prefx);
+    grid(2) = gridRefine(grid(2), prefy);
+    [xx, yy] = points2D(grid(1), grid(2), dom, prefx, prefy);
+    vals = evaluate(op, xx, yy, vectorize); % resample
+    vscale = max(abs(vals(:)));
+    % New tolerance:
+    [relTol, absTol] = getTol(xx, yy, vals, dom, pseudoLevel);
+    prefx.chebfuneps = relTol;
+    prefy.chebfuneps = relTol;
+    % New GE:
+    [pivotVal, pivotPos, rowVals, colVals, iFail] = ...
+                             completeACA(vals, absTol, factor);
+    % If the function is 0+noise then stop after three strikes.
+    if ( abs(pivotVal(1)) < 1e4*vscale*relTol )
+        strike = strike + 1;
+    end
+    disp(pivotVal(1:5))
+end
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function x = myPoints(n, dom, pref)
+% Get the sample points that correspond to the right grid for a particular
+% technology.
+
+% What tech am I based on?:
+tech = pref.tech();
+
+if ( isa(tech, 'chebtech2') )
+    x = chebpts( n, dom, 2 );   % x grid.
+elseif ( isa(tech, 'chebtech1') )
+    x = chebpts( n, dom, 1 );   % x grid.
+elseif ( isa(tech, 'trigtech') )
+    x = trigpts( n, dom );   % x grid.
+else
+    error('CHEBFUN:CHEBFUN2:constructor:mypoints:techType', ...
+        'Unrecognized technology');
+end
+
+end
+
+function [grid, nesting] = gridRefine( grid, pref )
+% Hard code grid refinement strategy for tech.
+
+% What tech am I based on?:
+tech = pref.tech();
+
+% What is the next grid size?
+if ( isa(tech, 'chebtech2') )
+    % Double sampling on tensor grid:
+    grid = 2^( floor( log2( grid ) ) + 1) + 1;
+    nesting = 1:2:grid;
+elseif ( isa(tech, 'trigtech') )
+    % Double sampling on tensor grid:
+    grid = 2^( floor( log2( grid ) + 1 ));
+    nesting = 1:2:grid;
+elseif ( isa(tech, 'chebtech1' ) )
+    grid = 3 * grid;
+    nesting = 2:3:grid;
+else
+    error('CHEBFUN:CHEBFUN2:constructor:gridRefine:techType', ...
+        'Technology is unrecognized.');
+end
+
+end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [xx, yy] = points2D(m, n, dom, prefx, prefy)
 % Get the sample points that correspond to the right grid for a particular
@@ -210,7 +280,6 @@ while ( ( infNorm > absTol ) && ( zRows < width / factor) ...
         col = ind;
     end
 end
-disp(infNorm);
 if ( infNorm <= absTol )
     ifail = 0;                               % We didn't fail.
 end

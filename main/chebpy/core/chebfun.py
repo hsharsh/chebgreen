@@ -11,29 +11,30 @@ from .plotting import import_plt, plotfun
 
 
 class Chebfun:
-    def __init__(self, funs):
+    def __init__(self, funs, prefs = prefs):
         self.funs = check_funs(funs)
         self.breakdata = compute_breakdata(self.funs)
         self.transposed = False
         self.coeffs = self.funs[0].coeffs
+        self.prefs = prefs
     @classmethod
-    def initempty(cls):
-        return cls([])
+    def initempty(cls, pref = prefs):
+        return cls([], pref = pref)
 
     @classmethod
-    def initidentity(cls, domain=None):
-        return cls(generate_funs(domain, Bndfun.initidentity))
+    def initidentity(cls, domain=None, prefs = prefs):
+        return cls(generate_funs(domain, Bndfun.initidentity), prefs)
 
     @classmethod
-    def initconst(cls, c, domain=None):
-        return cls(generate_funs(domain, Bndfun.initconst, {"c": c}))
+    def initconst(cls, c, domain=None, prefs = prefs):
+        return cls(generate_funs(domain, Bndfun.initconst, {"c": c}), prefs)
 
     @classmethod
-    def initfun_adaptive(cls, f, domain=None):
-        return cls(generate_funs(domain, Bndfun.initfun_adaptive, {"f": f}))
+    def initfun_adaptive(cls, f, domain=None, prefs = prefs):
+        return cls(generate_funs(domain, Bndfun.initfun_adaptive, {"f": f}), prefs)
 
     @classmethod
-    def initfun_fixedlen(cls, f, n, domain=None):
+    def initfun_fixedlen(cls, f, n, domain=None, prefs = prefs):
         nn = np.array(n)
         if nn.size < 2:
             funs = generate_funs(domain, Bndfun.initfun_fixedlen, {"f": f, "n": n})
@@ -44,18 +45,22 @@ class Chebfun:
             funs = []
             for interval, length in zip(domain.intervals, nn):
                 funs.append(Bndfun.initfun_fixedlen(f, interval, length))
-        return cls(funs)
+        return cls(funs, prefs)
 
     @classmethod
-    def initfun(cls, f, domain=None, n=None):
+    def initfun(cls, f, domain=None, n=None, prefs = prefs):
         if n is None:
-            return cls.initfun_adaptive(f, domain)
+            return cls.initfun_adaptive(f, domain, prefs)
         else:
-            return cls.initfun_fixedlen(f, n, domain)
+            return cls.initfun_fixedlen(f, n, domain, prefs)
 
     @classmethod
-    def initvalues(cls, values, domain=None):
-        return cls(generate_funs(domain, Bndfun.initvalues, {"values": values}))
+    def initcoeffs(cls, coeffs, domain=None, prefs = prefs):
+        return cls(generate_funs(domain, Bndfun.initcoeffs, {"coeffs": coeffs}), prefs)
+    
+    @classmethod
+    def initvalues(cls, values, domain=None, prefs = prefs):
+        return cls(generate_funs(domain, Bndfun.initvalues, {"values": values}), prefs)
     
     # --------------------
     #  operator overloads

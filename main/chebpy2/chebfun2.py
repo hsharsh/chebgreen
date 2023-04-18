@@ -171,8 +171,8 @@ class Chebfun2(ABC):
             pivotPos = np.array([0,0])
             isHappy = 1
 
-        cols = Quasimatrix(data = chebpy.chebfun(colVals, np.array(self.domain[2:]), pref = prefy), transposed = False) 
-        rows = Quasimatrix(data = chebpy.chebfun(rowVals.T, np.array(self.domain[:2]), pref = prefx), transposed = True)
+        cols = Quasimatrix(data = chebpy.chebfun(colVals, domain = np.array(self.domain[2:]), prefs = prefy), transposed = False) 
+        rows = Quasimatrix(data = chebpy.chebfun(rowVals.T, domain = np.array(self.domain[:2]), prefs = prefx), transposed = True)
         pivotValues = pivotVal
         pivotLocations = pivotPos
 
@@ -196,6 +196,7 @@ class Chebfun2(ABC):
         x, y = key
         if (isinstance(x,slice) and x == slice(None)) and (isinstance(y,slice) and y == slice(None)):
             return self
+        
         C,D,R = self.cdr
 
         if (isinstance(x,slice) and x == slice(None)):
@@ -204,15 +205,39 @@ class Chebfun2(ABC):
             if y.dtype == np.int64 or y.dtype == np.float64:
                 # Make evaluation points a vector.
                 y = y.reshape(-1)
-                return C[y,:] @ D * R.T
-            
+                return C[y,:] @ D * R
+        
+        if (isinstance(y,slice) and y == slice(None)):
+            if (isinstance(x,int) or isinstance(x,float)):
+                x = np.array(x)
+            if x.dtype == np.int64 or x.dtype == np.float64:
+                # Make evaluation points a vector.
+                x = x.reshape(-1)
+                return C * (D @ R[:,x])
+
+        # eps = np.finfo(np.float64).eps
+        # if isinstance(x,np.ndarray) and isinstance(y,np.ndarray) and min(x.shape) > 1 and x.shape == y.shape and len(x.shape) == 2:
+        #     if np.max(x - x[0:1,:]) <= 10*eps and np.max(y - y[:,0:1]) < 10*eps:
+        #         x, y = x[0,:], y[:,0]
+        #     elif np.max(y - y[0:1,:]) <= 10*eps and np.max(x - x[:,0:1]) < 10*eps:
+        #         x, y = x[:,0], y[0,:]
+        #     else:
+        #         # Evaluate at matrices, but they are not from meshgrid:
+        #         m, n = x.shape
+        #         out = np.zeros((m,n))
+
+        #         # Unroll the loop that is the longest
+        #         if m > n:
+        #             for i in range(n):
+        #                 out[:,i] = 
+
         raise NotImplementedError
         
     
     # Properties
     @property
     def cdr(self):
-        return self.cols, np.diag(self.pivotValues), self.rows
+        return self.cols, np.diag(1/self.pivotValues), self.rows
 
 def Max(A):
     return np.max(A), np.argmax(A)

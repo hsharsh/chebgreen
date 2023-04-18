@@ -9,6 +9,7 @@ class Quasimatrix(ABC):
         self.data = np.array(data).reshape(-1)
         if self.data is not None:
             self.domain = self.data[0].domain
+            self.prefs = self.data[0].prefs
         self.transposed = transposed
     
     # Disable matrix multiplication from numpy with broadcasting while right multiplying.
@@ -81,8 +82,8 @@ class Quasimatrix(ABC):
         assert F.shape[1] == G.shape[0], f"Cannot mulitply a ({F.shape[0]} x {F.shape[1]}) matrix with a ({G.shape[0]} x {G.shape[1]}) matrix."
         
         if isinstance(G,np.ndarray) and (G.dtype == np.int64 or G.dtype == np.float64):
-            if F.transposed:
-                return Quasimatrix(data = F.data.reshape((1,-1)) @ G, transposed = F.transposed)   # Returns (inf x G.shape[1]) matrix
+            if not F.transposed:
+                return Quasimatrix(data = chebpy.chebfun(F.coeffrepr() @ G, domain = F.domain, prefs = F.prefs, initcoeffs = True), transposed = True) # Returns (inf x G.shape[1]) matrix
             else:
                 RuntimeError('Invalid multiplication')  # This should never be reached because of shape check
         
@@ -133,8 +134,8 @@ class Quasimatrix(ABC):
         assert F.shape[1] == G.shape[0], f"Cannot mulitply a ({F.shape[0]} x {F.shape[1]}) matrix with a ({G.shape[0]} x {G.shape[1]}) matrix."
 
         if isinstance(F,np.ndarray) and (F.dtype == np.int64 or F.dtype == np.float64):
-            if not G.transposed:
-                return Quasimatrix(data = (F @ G.data.reshape((-1,1))), transposed = G.transposed)   # Returns (G.shape[0] x inf) matrix
+            if G.transposed:
+                return Quasimatrix(data = chebpy.chebfun(F @ G.coeffrepr(), domain = G.domain, prefs = G.prefs, initcoeffs = True), transposed = False) # Returns (G.shape[0] x inf) matrix
             else:
                 RuntimeError('Invalid multiplication')  # This should never be reached because of shape check
         
@@ -174,15 +175,22 @@ class Quasimatrix(ABC):
     @property
     def shape(self):
         if self.transposed:
-            return np.inf, len(self.data)
-        else:
             return len(self.data), np.inf
+        else:
+            return np.inf, len(self.data)
         
     @property
     def T(self):
         # Tranpose of a quasimatrix
         return Quasimatrix(data = self.data, transposed = not self.transposed)       
 
+    def coeffrepr(self):
+        if len(self.data) == 0:
+            raise RuntimeError('Cannot construct a coefficient representation for an empty quasimatrix')
+        if self.transposed:
+            return np.array([row.coeffs for row in self.data])
+        else:
+            return np.array([col.coeffs for col in self.data]).T
     ###  Utilities
     def plot(self, ax=None, **kwds):
         if isinstance(self.data,chebpy.core.chebfun.Chebfun):

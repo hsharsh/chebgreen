@@ -18,8 +18,7 @@ from .algorithms import (
     newtonroots,
     standard_chop,
 )
-from .ffts import fft, ifft
-from .algorithms import quadwts2
+
 from .plotting import import_plt, plotfun, plotfuncoeffs
 from .utilities import Interval, coerce_list
 
@@ -81,6 +80,9 @@ class Chebtech(Smoothfun, ABC):
         coeffs = adaptive(cls, fun, hscale=interval.hscale)
         return cls(coeffs, interval=interval)
 
+    @classmethod
+    def initcoeffs(cls, coeffs, interval = None):
+        return cls(coeffs, interval = interval)
     @classmethod
     def initvalues(cls, values, interval=None):
         """Initialise a Chebtech from an array of values at Chebyshev points"""
