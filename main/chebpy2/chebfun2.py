@@ -201,7 +201,7 @@ class Chebfun2(ABC):
 
         if (isinstance(x,slice) and x == slice(None)):
             if (isinstance(y,int) or isinstance(y,float)):
-                y = np.array(y)
+                y = np.array([y])
             if y.dtype == np.int64 or y.dtype == np.float64:
                 # Make evaluation points a vector.
                 y = y.reshape(-1)
@@ -209,7 +209,7 @@ class Chebfun2(ABC):
         
         if (isinstance(y,slice) and y == slice(None)):
             if (isinstance(x,int) or isinstance(x,float)):
-                x = np.array(x)
+                x = np.array([x])
             if x.dtype == np.int64 or x.dtype == np.float64:
                 # Make evaluation points a vector.
                 x = x.reshape(-1)
@@ -233,6 +233,8 @@ class Chebfun2(ABC):
                     out = np.array([np.sum(C[y[:,i],:] @ D * R[:,x[:,i]].T, axis = 1) for i in range(n)]).T
                 else:
                     out = np.array([np.sum(C[y[j,:],:] @ D * R[:,x[j,:]].T, axis = 1) for j in range(m)])
+        if (isinstance(x,int) or isinstance(x,float)) and (isinstance(y,int) or isinstance(y,float)):
+            x, y = np.array([x]), np.array([y])
         if isinstance(x,np.ndarray) and isinstance(y,np.ndarray) and x.shape == y.shape and (len(x.shape) == 1 or min(x.shape) == 1):
             shape = x.shape
             x, y = x.reshape(-1), y.reshape(-1)
