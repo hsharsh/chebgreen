@@ -188,16 +188,13 @@ class Chebfun2(ABC):
 
     def __getitem__(self, key):
         """
-        Implement using quasimatrix. Will need to implement matrix mult
-        Write the faster evaluation using meshgrid because it will be useful for plotting and stuff?
-
-        ????
+        Evaluate a learned chebfun2 object on numeric, array, or meshgrid inputs
         """
         x, y = key
         if (isinstance(x,slice) and x == slice(None)) and (isinstance(y,slice) and y == slice(None)):
             return self
         
-        C,D,R = self.cdr
+        C,D,R = self.cdr()
 
         if (isinstance(x,slice) and x == slice(None)):
             if (isinstance(y,int) or isinstance(y,float)):
@@ -226,7 +223,6 @@ class Chebfun2(ABC):
             else:
                 # Evaluate at matrices, but they are not from meshgrid:
                 m, n = x.shape
-                # out = np.zeros((m,n))
 
                 # Unroll the loop that is the longest
                 if m > n:
@@ -242,9 +238,6 @@ class Chebfun2(ABC):
         
         raise NotImplementedError('Cannot evaluate chebfun2 object with given inputs')
         
-    
-    # Properties
-    @property
     def cdr(self):
         return self.cols, np.diag(1/self.pivotValues), self.rows
 
