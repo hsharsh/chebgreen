@@ -28,4 +28,16 @@ class Rational(tf.keras.layers.Layer):
         
         def __call__(self, shape, dtype=None, **kwargs):
             return tf.transpose(tf.constant([[1.1915, 1.5957, 0.5, 0.0218], [0., 2.383, 0.0, 1.0]]))
-    
+
+def get_activation(identifier):
+    """Return the activation function."""
+    if isinstance(identifier, str):
+        return {
+                'elu': tf.nn.elu,
+                'relu': tf.nn.relu,
+                'selu': tf.nn.selu,
+                'sigmoid': tf.nn.sigmoid,
+                'sin': tf.sin,
+                'tanh': tf.nn.tanh,
+                'rational': Rational(),
+                }[identifier]
