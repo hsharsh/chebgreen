@@ -1,4 +1,4 @@
-import tensorflow as tf
+from .backend import tf, config
 
 class Rational(tf.keras.layers.Layer):
     """
@@ -9,13 +9,13 @@ class Rational(tf.keras.layers.Layer):
     # Reference
         - [Rational neural networks](https://arxiv.org/abs/2004.01902)
     """
-    def __init__(self, trainable=True, name=None, dtype=None, dynamic=False, **kwargs):
+    def __init__(self, trainable=True, name=None, dtype=config(tf), dynamic=False, **kwargs):
         super().__init__(trainable, name, dtype, dynamic, **kwargs)
-        self.coeffs = self.add_weight("Numerator coeffs", shape = [4,2], initializer=self.Coefficient_Initializer)
-        self.mask = tf.transpose(tf.constant([[1., 1., 1., 1.], [0., 1., 1., 1.]]))
+        self.coeffs = self.add_weight("Numerator coeffs", shape = [4,2], dtype = config(tf), initializer=self.Coefficient_Initializer)
+        self.mask = tf.transpose(tf.constant([[1., 1., 1., 1.], [0., 1., 1., 1.]], dtype = config(tf)))
         
     def call(self, inputs, *args, **kwargs):
-        exponents = tf.constant([3., 2., 1. , 0.])
+        exponents = tf.constant([3., 2., 1. , 0.], dtype = config(tf))
         X = tf.pow(tf.expand_dims(inputs, axis = -1), exponents)
         PQ = X @ (self.coeffs*self.mask)
         return tf.divide(PQ[...,0],PQ[...,1])
@@ -26,8 +26,8 @@ class Rational(tf.keras.layers.Layer):
         def __init__(self) -> None:
             super().__init__()
         
-        def __call__(self, shape, dtype=None, **kwargs):
-            return tf.transpose(tf.constant([[1.1915, 1.5957, 0.5, 0.0218], [0., 2.383, 0.0, 1.0]]))
+        def __call__(self, shape, dtype = config(tf), **kwargs):
+            return tf.transpose(tf.constant([[1.1915, 1.5957, 0.5, 0.0218], [0., 2.383, 0.0, 1.0]], dtype = dtype))
 
 def get_activation(identifier):
     """Return the activation function."""

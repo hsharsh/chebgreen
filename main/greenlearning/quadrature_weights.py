@@ -1,6 +1,4 @@
-import numpy as np
-from scipy.spatial import ConvexHull
-
+from .backend import np, scipy
 # Trapezoidal weights
 def trapezoidal(x):
     """Trapezoidal weights for trapezoidal rule integration."""
@@ -21,7 +19,7 @@ def uniform(x):
         volume = np.max(x) - np.min(x)
     # Approximate area using convex hull
     else:
-        hull = ConvexHull(x)
+        hull = scipy.spatial.ConvexHull(x)
         volume = hull.volume
     weights = volume*np.ones((Nx,1), dtype = np.float64) / Nx
     return weights
