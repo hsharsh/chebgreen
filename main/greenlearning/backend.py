@@ -3,7 +3,7 @@ import tensorflow as tf
 import scipy
 from abc import ABC
 
-# tf.float64 doesn't work for 
+# tf.float64 doesn't work for Apple tf2
 class Config(ABC):
     def __init__(self, precision):
         self.precision = precision
@@ -17,5 +17,6 @@ class Config(ABC):
  
 config = Config(32)
 
+# Need to explicitly set the config for float to float64 since tf.keras.Model.__call__ casts to tf.backend.floatx
 if config(tf) == tf.float64:
     tf.keras.backend.set_floatx('float64')

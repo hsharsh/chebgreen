@@ -1,4 +1,5 @@
 from .backend import tf, ABC, config
+from .utils import generateEvaluationGrid
 from .quadrature_weights import get_weights
 
 class LossGreensFunction(ABC):
@@ -12,19 +13,12 @@ class LossGreensFunction(ABC):
     
     @tf.function
     def __call__(self, fTrain, uTrain):
-        X = self.generateEvaluationGrid(self.xF, self.xU)
-        nF, nU = fTrain.shape[1], uTrain.shape[1]
-        G = tf.transpose(tf.reshape(self.G(X),(nF, -1)))
+        X = generateEvaluationGrid(self.xF, self.xU)
+        nF, nU = self.xF.shape[0], self.xU.shape[0]
+        G = tf.transpose(tf.reshape(self.G(X),(nF, nU)))
         u_hom = self.N(self.xU)
 
-        uPred = tf.transpose(tf.matmul(G, tf.multiply(fTrain, tf.constant(self.wF)), transpose_b = True) + u_hom)
-        loss = tf.math.reduce_sum(tf.multiply(uTrain - uPred,self.wU), axis = 1)/tf.math.reduce_sum(tf.multiply(uTrain,self.wU), axis = 1)
+        uPred = tf.transpose(tf.matmul(G, tf.multiply(fTrain, self.wF), transpose_b = True) + u_hom)
+        loss = tf.divide(tf.math.reduce_sum(tf.multiply(tf.square(uTrain - uPred),self.wU), axis = 1), \
+                         tf.math.reduce_sum(tf.multiply(tf.square(uTrain),self.wU), axis = 1))
         return tf.math.reduce_mean(loss)
-    
-    def generateEvaluationGrid(self, xF, xU):
-        nF, nU, d = xF.shape[0], xU.shape[0], xU.shape[1]
-        x, y = [],[]
-        for i in range(d):
-            x.append(tf.reshape(tf.tile(xU[:,i].reshape((1,nU)), [nF,1]), (nF*nU,1)))
-            y.append(tf.reshape(tf.tile(xF[:,i].reshape((nF,1)), [1,nU]), (nF*nU,1)))
-        return tf.concat(x+y, axis = 1)

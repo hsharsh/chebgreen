@@ -25,3 +25,11 @@ class DataProcessor(ABC):
 
         self.val_dataset = tf.data.Dataset.from_tensor_slices((data['F'][:,iSplit:].T.astype(dtype = config(np)), data['U'][:,iSplit:].T.astype(dtype = config(np))))
         self.val_dataset = self.val_dataset.batch(batch_size)
+
+def generateEvaluationGrid(xF, xU):
+    nF, nU, d = xF.shape[0], xU.shape[0], xU.shape[1]
+    x, y = [],[]
+    for i in range(d):
+        x.append(tf.reshape(tf.tile(xU[:,i].reshape((1,nU)), [nF,1]), (nF*nU,1)))
+        y.append(tf.reshape(tf.tile(xF[:,i].reshape((nF,1)), [1,nU]), (nF*nU,1)))
+    return tf.concat(x+y, axis = 1)

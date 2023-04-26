@@ -1,4 +1,4 @@
-from .backend import tf, config
+from .backend import tf, np, config
 
 class Rational(tf.keras.layers.Layer):
     """
@@ -9,25 +9,39 @@ class Rational(tf.keras.layers.Layer):
     # Reference
         - [Rational neural networks](https://arxiv.org/abs/2004.01902)
     """
-    def __init__(self, trainable=True, name=None, dtype=config(tf), dynamic=False, **kwargs):
-        super().__init__(trainable, name, dtype, dynamic, **kwargs)
-        self.coeffs = self.add_weight("Numerator coeffs", shape = [4,2], dtype = config(tf), initializer=self.Coefficient_Initializer)
-        self.mask = tf.transpose(tf.constant([[1., 1., 1., 1.], [0., 1., 1., 1.]], dtype = config(tf)))
-        
-    def call(self, inputs, *args, **kwargs):
-        exponents = tf.constant([3., 2., 1. , 0.], dtype = config(tf))
-        X = tf.pow(tf.expand_dims(inputs, axis = -1), exponents)
-        PQ = X @ (self.coeffs*self.mask)
-        return tf.divide(PQ[...,0],PQ[...,1])
-    class Coefficient_Initializer(tf.keras.initializers.Initializer):
-        """
-        Initializer for the coefficients of the rational function
-        """
-        def __init__(self) -> None:
-            super().__init__()
-        
-        def __call__(self, shape, dtype = config(tf), **kwargs):
-            return tf.transpose(tf.constant([[1.1915, 1.5957, 0.5, 0.0218], [0., 2.383, 0.0, 1.0]], dtype = dtype))
+    def __init__(self,
+                trainable: bool = True,
+                **kwargs):
+        super().__init__(**kwargs)
+        self.trainable = trainable
+
+    def build(self, input_shape: tf.TensorShape, dtype = config(tf)):
+        super().build(input_shape)  
+        self.Pcoeffs = tf.unstack(tf.Variable(
+            [1.1915, 1.5957, 0.5, 0.0218],
+            dtype=dtype,
+            trainable=self.trainable,
+            name="Pcoeffs"))
+        self.Qcoeffs = tf.unstack(tf.Variable(
+            [2.383, 0.0, 1.0],
+            dtype=dtype,
+            trainable=self.trainable,
+            name="Pcoeffs"))
+
+
+    def call(self,
+            inputs: tf.Tensor
+            ) -> tf.Tensor:
+        return tf.math.divide(tf.math.polyval(self.Pcoeffs,inputs), tf.math.polyval(self.Qcoeffs,inputs))
+
+    def get_config(self):
+        config = {
+            "P Coefficients": self.get_weights()[0],
+            "Q coefficients": self.get_weights()[1],
+            "trainable": self.trainable
+        }
+        base_config = super().get_config()
+        return dict(list(base_config.items()) + list(config.items()))
 
 def get_activation(identifier):
     """Return the activation function."""
