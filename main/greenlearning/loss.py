@@ -13,7 +13,7 @@ class LossGreensFunction(ABC):
     
     @tf.function
     def __call__(self, fTrain, uTrain):
-        X = generateEvaluationGrid(self.xF, self.xU)
+        X = generateEvaluationGrid(self.xU, self.xF)
         nF, nU = self.xF.shape[0], self.xU.shape[0]
         G = tf.transpose(tf.reshape(self.G(X),(nF, nU)))
         u_hom = self.N(self.xU)

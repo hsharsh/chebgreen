@@ -26,7 +26,7 @@ class DataProcessor(ABC):
         self.val_dataset = tf.data.Dataset.from_tensor_slices((data['F'][:,iSplit:].T.astype(dtype = config(np)), data['U'][:,iSplit:].T.astype(dtype = config(np))))
         self.val_dataset = self.val_dataset.batch(batch_size)
 
-def generateEvaluationGrid(xF, xU):
+def generateEvaluationGrid(xU, xF):
     nF, nU, d = xF.shape[0], xU.shape[0], xU.shape[1]
     x, y = [],[]
     for i in range(d):
