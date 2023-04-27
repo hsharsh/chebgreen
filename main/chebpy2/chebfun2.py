@@ -408,4 +408,4 @@ def completeACA(A, absTol, factor):
     if zRows >= (width/factor):
         ifail = 1                               # We did fail.
     
-    return pivotValue, pivotElement, rows, cols, ifail
+    return pivotValue[:zRows], pivotElement[:zRows,:], rows, cols, ifail
