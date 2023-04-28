@@ -178,6 +178,12 @@ class Quasimatrix(ABC):
             return len(self.data), np.inf
         else:
             return np.inf, len(self.data)
+    
+    # Assuming all chebfuns have the same size
+    def __len__(self):
+        if len(self.data) == 0:
+            return 0
+        return self.data[0].funs[0].size
         
     @property
     def T(self):

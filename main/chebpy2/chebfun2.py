@@ -15,31 +15,29 @@ class Chebfun2(ABC):
         else:
             self.domain = domain
 
-        self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(g, prefs, vectorize)
+        self.prefs = prefs
 
-        self.rank = len(self.pivotValues)
-        self.vscale = 0
-        self.cornervalues = np.array([0,0,0,0])
+        self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(g, vectorize)
 
         # Write a sampletest here
     
     def __repr__(self):
         header = f"chebfun2 object\n"
-        toprow = "     domain       rank     corner values\n"
+        toprow = "     domain       rank               corner values\n"
         rowdta = (f"[{self.domain[0]},{self.domain[1]}] x [{self.domain[2]},{self.domain[3]}]     {self.rank}       "
-            f"[{self.cornervalues[0]} {self.cornervalues[1]} {self.cornervalues[2]} {self.cornervalues[3]}]\n")
-        btmrow = f"vertical scale = {self.vscale}"
+            f"[{self.cornervalues[0]:2f} {self.cornervalues[1]:2f} {self.cornervalues[2]:2f} {self.cornervalues[3]:2f}]\n")
+        btmrow = f"vertical scale = {self.vscale:2f}"
         return header + toprow + rowdta + btmrow
     
 
-    def constructor(self, g, prefs, vectorize = False):
+    def constructor(self, g, vectorize = False):
 
         # Define this somewhere in a config file
-        prefx = prefs.prefx
-        prefy = prefs.prefy
-        minSample = prefs.minSample
+        prefx = self.prefs.prefx
+        prefy = self.prefs.prefy
+        minSample = self.prefs.minSample
         maxSample = np.array(np.power(2,[prefx.maxpow2,prefy.maxpow2]))
-        maxRank = prefs.maxRank
+        maxRank = self.prefs.maxRank
 
         if prefy == None:
             prefy = prefx
@@ -135,7 +133,7 @@ class Chebfun2(ABC):
                     colVals = evaluate(g, xx, yy, vectorize)
                 
                 if not resolvedRows:
-                    m, nesting = gridRefine(m, prefy)
+                    m, nesting = gridRefine(m, prefx)
                     xx, yy = np.meshgrid(chebpy.chebpts(m, self.domain[:2], prefx)[0], pivPos[:,1])
                     rowVals = evaluate(g, xx, yy, vectorize)
                     PP[:,1] = nesting[PP[:,1]]
@@ -246,6 +244,24 @@ class Chebfun2(ABC):
         
     def cdr(self):
         return self.cols, np.diag(1/self.pivotValues), self.rows
+    
+    @property
+    def cornervalues(self):
+        xx, yy = np.meshgrid(self.domain[:2], self.domain[2:])  
+        return self[xx,yy].reshape(-1)
+
+    @property
+    def rank(self):    
+        return len(self.pivotValues)
+
+    @property
+    def vscale(self):
+        m, n = len(self.rows), len(self.cols)
+        # Minmum samples = 9, Maximum samples = 2000
+        m, n = max(min(m,9),2000), max(min(n,9),2000)
+        prefx, prefy = self.prefs.prefx, self.prefs.prefy
+        x, y = points2D(m, n, self.domain, prefx, prefy)
+        return np.max(self[x,y])
 
 def Max(A):
     return np.max(A), np.argmax(A)

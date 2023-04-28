@@ -24,8 +24,8 @@ class Model(ABC):
             self.N = NN(numInputs = dimension, numOutputs = dimension, layerConfig = np.array(layerConfig), activation = activation)
 
         else:
-             self.G = tf.keras.models.load_model(loadPath+"/G")
-             self.N = tf.keras.models.load_model(loadPath+"/N")      
+             self.G = tf.keras.models.load_model(loadPath+"/G", compile = False)
+             self.N = tf.keras.models.load_model(loadPath+"/N", compile = False)      
 
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
                         initial_learning_rate=1e-3,
