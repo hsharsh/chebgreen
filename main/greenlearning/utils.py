@@ -20,11 +20,11 @@ class DataProcessor(ABC):
 
         # Train-validation split
         iSplit = int(valRatio*data['F'].shape[1])
-        self.train_dataset = tf.data.Dataset.from_tensor_slices((data['F'][:,:iSplit].T.astype(dtype = config(np)), data['U'][:,:iSplit].T.astype(dtype = config(np))))
-        self.train_dataset = self.train_dataset.shuffle(buffer_size = buffer_size).batch(batch_size)
+        self.trainDataset = tf.data.Dataset.from_tensor_slices((data['F'][:,:iSplit].T.astype(dtype = config(np)), data['U'][:,:iSplit].T.astype(dtype = config(np))))
+        self.trainDataset = self.trainDataset.shuffle(buffer_size = buffer_size).batch(batch_size)
 
-        self.val_dataset = tf.data.Dataset.from_tensor_slices((data['F'][:,iSplit:].T.astype(dtype = config(np)), data['U'][:,iSplit:].T.astype(dtype = config(np))))
-        self.val_dataset = self.val_dataset.batch(batch_size)
+        self.valDataset = tf.data.Dataset.from_tensor_slices((data['F'][:,iSplit:].T.astype(dtype = config(np)), data['U'][:,iSplit:].T.astype(dtype = config(np))))
+        self.valDataset = self.valDataset.batch(batch_size)
 
 def generateEvaluationGrid(xU, xF):
     nF, nU, d = xF.shape[0], xU.shape[0], xU.shape[1]

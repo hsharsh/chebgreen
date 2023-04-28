@@ -54,19 +54,24 @@ class Model(ABC):
         
         self.init_loss(data.xF, data.xU)
 
-        loss_history = []
+        lossHistory = {'training': [], 'validation':[]}
         for epoch in range(epochs):
-            for fTrain, uTrain in data.train_dataset:
+            for fTrain, uTrain in data.trainDataset:
                 with tf.GradientTape() as tape:
-                    loss_value = self.lossfn(fTrain,uTrain)
+                    lossValue = self.lossfn(fTrain,uTrain)
                     
-                gradG, gradN = tape.gradient(loss_value, [self.G.trainable_weights, self.N.trainable_weights])
+                gradG, gradN = tape.gradient(lossValue, [self.G.trainable_weights, self.N.trainable_weights])
                 self.optimizer.apply_gradients(zip(gradG, self.G.trainable_weights))
                 self.optimizer.apply_gradients(zip(gradN, self.N.trainable_weights))
-            loss_history.append(loss_value)
-            if epoch % 100 == 0:
-                print(f"Training loss at epoch {epoch} = {config(np)(loss_value):.2E}")
-        return loss_history
+
+            # Change this to be an average over batches. Currently assuming a single batch
+            lossHistory['training'].append(lossValue.numpy())
+            for fVal, uVal in data.valDataset:
+                lossValue = self.lossfn(fVal, uVal)
+            lossHistory['validation'].append(lossValue.numpy())
+            if (epoch+1) % 100 == 0:
+                print(f"Loss at epoch {epoch}: Training = {lossHistory['training'][-1]:.3E}, Validation = {lossHistory['validation'][-1]:.3E}")
+        return lossHistory
     
     # Not implemented for Green's function of dimension > 1
     def evaluateG(self, x, s):
