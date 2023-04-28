@@ -4,7 +4,7 @@
 % run the command
 % generate_gl_example('helmholtz');
 
-function generate_gl_example(example_name, varargin)
+function generate_gl_example(example_name, theta, varargin)
     % Add warning about Chebfun
     warning("This code requires the Chebfun package. See http://www.chebfun.org/download/ for installation details.")
 
@@ -14,7 +14,11 @@ function generate_gl_example(example_name, varargin)
     sprintf('### Example = %s ###', example_name)
 
     % Load the differential operator example
-    output_example = feval(example_name);
+    if nargin > 1
+        output_example = feval(example_name, theta);
+    else
+        output_example = feval(example_name);
+    end
     diff_op = output_example{1};
     dom = diff_op.domain;
     
@@ -149,15 +153,23 @@ function generate_gl_example(example_name, varargin)
     U = U.*(1 + noise_level*randn(size(U)));
 
     % Save the data
-    if exist("ExactGreen")
-        save(sprintf('examples/datasets/%s.mat',example_name),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
+    if nargin > 1
+        if exist("ExactGreen")
+            save(sprintf('examples/datasets/%s-%s.mat',example_name,num2str(theta)),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
+        else
+            save(sprintf('examples/datasets/%s-%s.mat',example_name,num2str(theta)),"X","Y","U","F","U_hom","XG","YG")
+        end
     else
-        save(sprintf('examples/datasets/%s.mat',example_name),"X","Y","U","F","U_hom","XG","YG")
+        if exist("ExactGreen")
+            save(sprintf('examples/datasets/%s.mat',example_name),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
+        else
+            save(sprintf('examples/datasets/%s.mat',example_name),"X","Y","U","F","U_hom","XG","YG")
+        end
     end
     
     % Plot the training data
     plot_data = false;
-    if nargin > 1 && varargin{1}
+    if nargin > 2 && varargin{2}
         plot_data = true;
     end
     if plot_data

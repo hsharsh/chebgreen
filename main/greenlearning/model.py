@@ -64,7 +64,7 @@ class Model(ABC):
                 self.optimizer.apply_gradients(zip(gradG, self.G.trainable_weights))
                 self.optimizer.apply_gradients(zip(gradN, self.N.trainable_weights))
             loss_history.append(loss_value)
-            if epoch % 10 == 0:
+            if epoch % 100 == 0:
                 print(f"Training loss at epoch {epoch} = {config(np)(loss_value):.2E}")
         return loss_history
     

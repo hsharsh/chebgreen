@@ -1,17 +1,21 @@
 import chebpy
 import numpy as np
-from abc import ABC, abstractmethod, abstractclassmethod
+from abc import ABC
+from .preferences import cheb2prefs
 from .quasimatrix import Quasimatrix
 
 class Chebfun2(ABC):
-    def __init__(self,g = None, domain = np.array([-1, 1, -1, 1]), prefx = chebpy.core.settings.DefaultPreferences, prefy = None, vectorize = False):
-
+    def __init__(self, g, domain = None, prefs = cheb2prefs, vectorize = False):
+        
         # Default domain is [-1,1] x [-1, 1]
-        if type(domain) is not np.ndarray:
+        if domain == None:
+            self.domain = prefs.domain
+        elif type(domain) is not np.ndarray:
             self.domain = np.array(domain)
         else:
             self.domain = domain
-        self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(g, prefx, prefy, vectorize)
+
+        self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(g, prefs, vectorize)
 
         self.rank = len(self.pivotValues)
         self.vscale = 0
@@ -28,12 +32,14 @@ class Chebfun2(ABC):
         return header + toprow + rowdta + btmrow
     
 
-    def constructor(self, g = None, prefx = chebpy.core.settings.DefaultPreferences, prefy = None, vectorize = False):
+    def constructor(self, g, prefs, vectorize = False):
 
         # Define this somewhere in a config file
-        minSample = np.array([17,17])
+        prefx = prefs.prefx
+        prefy = prefs.prefy
+        minSample = prefs.minSample
         maxSample = np.array(np.power(2,[prefx.maxpow2,prefy.maxpow2]))
-        maxRank = np.array([513,513])
+        maxRank = prefs.maxRank
 
         if prefy == None:
             prefy = prefx
@@ -42,7 +48,7 @@ class Chebfun2(ABC):
         
         pseudoLevel = min(prefx.eps, prefy.eps)
         
-        factor = 4.0        # Ration between the size of matrix and #pivots.
+        factor = 4.0        # Ratio between the size of matrix and #pivots.
         isHappy = 0         # If we are currently unresolved.
         failure = 0         # Reached max discretization size without being happy.
 

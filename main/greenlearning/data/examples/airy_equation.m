@@ -1,11 +1,13 @@
-function output_example = airy_equation()
+function output_example = airy_equation(K)
 % Advection-diffusion equation
 
 % Define the domain.
 dom = [0,1];
 
 % Parameter of the equation
-K = 10;
+if nargin < 1
+    K = 10
+end
 
 % Differential operator
 N = chebop(@(x,u) diff(u,2)-K^2*x*u, dom);
