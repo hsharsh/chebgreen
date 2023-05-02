@@ -1,6 +1,7 @@
 import chebpy
 import numpy as np
 from abc import ABC, abstractmethod, abstractclassmethod
+from .utils import legpoly
 
 class Quasimatrix(ABC):
     """Create a Quasimatrix in order to implement most functionality for the chebfun2 constructor"""
@@ -167,10 +168,17 @@ class Quasimatrix(ABC):
             return (w * Fvalues) @ Gvalues * rescalingFactor
         else:
             raise NotImplementedError        
-    # def __rmul__(self,G):
-    #     F = self
-    #     if (isinstance(G,int) or isinstance(G,float)) or (isinstance(G,np.ndarray) and (G.dtype == np.int64 or G.dtype == np.float64)):
-    #         return Quasimatrix(G * F.data, transposed = F.transposed)         
+    
+    def qr(self):
+        assert self.shape[0] == np.inf, "QR decomposition is only computed for column Quasimatrices"
+        L = Quasimatrix(legpoly(n = np.linspace(0,self.shape[1], self.shape[1]).astype(int),
+                    dom = self.domain,
+                    normalize = True,
+                    prefs = self.prefs))
+        
+        # Incomplete
+        return L, L
+        
     ### Properties
     @property
     def shape(self):
@@ -188,7 +196,8 @@ class Quasimatrix(ABC):
     @property
     def T(self):
         # Tranpose of a quasimatrix
-        return Quasimatrix(data = self.data, transposed = not self.transposed)       
+        return Quasimatrix(data = self.data, transposed = not self.transposed)
+       
 
     def coeffrepr(self):
         if len(self.data) == 0:

@@ -33,7 +33,7 @@ class Model(ABC):
                         decay_rate=0.9)
         
         """
-        greenlearning model benefit from using a few steps of L-BFGS optimizer during the training
+        greenlearning models benefit from using a few steps of L-BFGS optimizer during the training
         but between tensorflow probability not being available for M1 Macbooks (which I am
         protyping this code on) and tf2 dropping the contrib module which had an implementation for 
         supporting external optimizers like ScipyOptimizerInterface, this code just uses an Adam
