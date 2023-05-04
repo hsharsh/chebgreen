@@ -245,7 +245,7 @@ class Chebtech(Smoothfun, ABC):
             # check for zero output
             eps = prefs.eps
             tol = 0.5 * eps * max([f.vscale, g.vscale])
-            if all(abs(cfs) < tol):
+            if (abs(cfs) < tol).all():
                 return cls.initconst(0.0, interval=self.interval)
             else:
                 return cls(cfs, interval=self.interval)

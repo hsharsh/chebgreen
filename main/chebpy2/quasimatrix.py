@@ -1,7 +1,7 @@
 import chebpy
 import numpy as np
 from abc import ABC, abstractmethod, abstractclassmethod
-from .utils import legpoly
+from .utils import legpoly, abstractQR
 
 class Quasimatrix(ABC):
     """Create a Quasimatrix in order to implement most functionality for the chebfun2 constructor"""
@@ -38,7 +38,8 @@ class Quasimatrix(ABC):
             else:
                 raise RuntimeError('The first index needs to be a float or a numpy array of floats')
         else:
-            assert isinstance(x,slice), 'First index needs to be a slice'
+            assert isinstance(x,slice) or isinstance(x, int), 'First index needs to be a slice or an integer'
+
             if isinstance(y,int) or isinstance(y,float):
                 return np.array([row(y) for row in self.data[x]])
             elif isinstance(y,np.ndarray) and (y.dtype == np.int64 or y.dtype == np.float64):
@@ -47,23 +48,44 @@ class Quasimatrix(ABC):
                 return Quasimatrix(data = np.array(self.data[x]).reshape(-1), transposed = self.transposed)
             else:
                 raise RuntimeError('The second index needs to be a float or a numpy array of floats')
+            
+    def __setitem__(self, key, newvalue):
+        x, y = key
+        if not self.transposed:
+            assert isinstance(y,slice) or isinstance(y,int), 'Second index needs to be a slice or an integer'
+
+            if (x == slice(None)):
+                if isinstance(y, int):
+                    self.data[y] = newvalue.data.item()
+                elif isinstance(y,slice):
+                    start, stop, step = y.indices(len(self.data))
+                    for ind, i in enumerate(range(start, stop, step)):
+                        self.data[i] = newvalue.data[ind]
+            else:
+                raise RuntimeError('Can only set the value of a slice of the Column Quasimatrix.')
+        else:
+            assert isinstance(x,slice) or isinstance(x, int), 'First index needs to be a slice or an integer'
+
+            if y == slice(None):
+                if isinstance(x, int):
+                    self.data[x] = newvalue.data.item()
+                elif isinstance(x,slice):
+                    start, stop, step = x.indices(len(self.data))
+                    for ind, i in enumerate(range(start, stop, step)):
+                        self.data[i] = newvalue.data[ind]
+            else:
+                raise RuntimeError('Can only set the value of a slice of the Row Quasimatrix.')    
     
+    # Scalar addition and subtraction not implemented
     def __add__(self, qmat):
         # Addition of quasimatrices
         assert self.shape == qmat.shape, f"Cannot add a ({self.shape[0]} x {self.shape[1]}) matrix to a ({qmat.shape[0]} x {qmat.shape[1]}) matrix."
         return Quasimatrix(data = self.data + qmat.data, transposed = self.transposed)
-
-    # def __mul__(self, qmat):
-    #     # Multiplication of quasimatrices
-    #     assert self.shape[1] == qmat.shape[0], f"Cannot mulitply a ({self.shape[0]} x {self.shape[1]}) matrix with a ({qmat.shape[0]} x {qmat.shape[1]}) matrix."
-        
-    #     if self.shape[1] == np.inf:
-    #         mat = np.zeros((self.shape[0],qmat.shape[1]))
-    #         for i in range(self.shape[0]):
-    #             for j in range(qmat.shape[1]):
-    #                 mat[i,j] = chebpy.core.algorithms.innerproduct(self.data[i],qmat.data[j])
-    #     else:
-    #         raise NotImplementedError
+    
+    def __sub__(self, qmat):
+        # Addition of quasimatrices
+        assert self.shape == qmat.shape, f"Cannot subtract a ({qmat.shape[0]} x {qmat.shape[1]}) matrix from a ({self.shape[0]} x {self.shape[1]}) matrix."
+        return Quasimatrix(data = self.data - qmat.data, transposed = self.transposed)
 
     def __mul__(self, G):
         """
@@ -84,7 +106,7 @@ class Quasimatrix(ABC):
         
         if isinstance(G,np.ndarray) and (G.dtype == np.int64 or G.dtype == np.float64):
             if not F.transposed:
-                return Quasimatrix(data = chebpy.chebfun(F.coeffrepr() @ G, domain = F.domain, prefs = F.prefs, initcoeffs = True), transposed = True) # Returns (inf x G.shape[1]) matrix
+                return Quasimatrix(data = chebpy.chebfun(F.coeffrepr() @ G, domain = F.domain, prefs = F.prefs, initcoeffs = True), transposed = False) # Returns (inf x G.shape[1]) matrix
             else:
                 RuntimeError('Invalid multiplication')  # This should never be reached because of shape check
         
@@ -136,7 +158,7 @@ class Quasimatrix(ABC):
 
         if isinstance(F,np.ndarray) and (F.dtype == np.int64 or F.dtype == np.float64):
             if G.transposed:
-                return Quasimatrix(data = chebpy.chebfun(F @ G.coeffrepr(), domain = G.domain, prefs = G.prefs, initcoeffs = True), transposed = False) # Returns (G.shape[0] x inf) matrix
+                return Quasimatrix(data = chebpy.chebfun(F @ G.coeffrepr(), domain = G.domain, prefs = G.prefs, initcoeffs = True), transposed = True) # Returns (G.shape[0] x inf) matrix
             else:
                 RuntimeError('Invalid multiplication')  # This should never be reached because of shape check
         
@@ -176,8 +198,7 @@ class Quasimatrix(ABC):
                     normalize = True,
                     prefs = self.prefs))
         
-        # Incomplete
-        return L, L
+        return abstractQR(self, L, self.prefs.eps)
         
     ### Properties
     @property
@@ -190,8 +211,20 @@ class Quasimatrix(ABC):
     # Assuming all chebfuns have the same size
     def __len__(self):
         if len(self.data) == 0:
-            return 0
+            return None
         return self.data[0].funs[0].size
+    
+    @property
+    def vscale(self):
+        if len(self.data) == 0:
+            return None
+        return [f.vscale for f in self.data]
+    
+    @property
+    def normest(self):
+        if len(self.data) == 0:
+            return None
+        return np.max(self.vscale)
         
     @property
     def T(self):

@@ -245,6 +245,28 @@ class Chebfun2(ABC):
     def cdr(self):
         return self.cols, np.diag(1/self.pivotValues), self.rows
     
+    def svd(self):
+        C, D, R = self.cdr()
+        
+        # If the function is the zero function, then special care is required:
+        if np.linalg.norm(np.diag(D)) == 0:
+            width, height = np.diff(self.domain[:2]), np.diff(self.domain[2:])
+            f = Chebfun2(lambda x,y: np.ones(x.shape), domain = self.domain, prefs = self.prefs)
+            U = (1/np.sqrt(width)) * f.cols
+            V = (1/np.sqrt(height)) * f.rows
+            return U, 0, V
+        
+        Ql, Rl = C.qr()
+        Qr, Rr = R.T.qr()
+        U1, S, V1t = np.linalg.svd(Rl @ D @ Rr.T)
+        U = Ql * U1
+        V = (Qr * V1t.T).T
+
+        return U, S, V
+
+        
+        
+    
     @property
     def cornervalues(self):
         xx, yy = np.meshgrid(self.domain[:2], self.domain[2:])  

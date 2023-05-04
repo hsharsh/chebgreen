@@ -1,5 +1,6 @@
 import chebpy
 import numpy as np
+from copy import deepcopy
 
 def scaleNodes(x, dom):
     # SCALENODES   Scale the Chebyshev nodes X from [-1,1] to DOM.
@@ -80,3 +81,90 @@ def legpoly(n, dom = chebpy.core.settings.DefaultPreferences.domain, normalize =
             Lk_2 = temp
             ind += 1
     return chebpy.chebfun(P[:,indices], dom, prefs = prefs)
+
+def Norm(A):
+    return A.normest
+    
+def InnerProduct(A,B):
+    return (A.T * B).item()
+
+def abstractQR(qMat, E, tol = chebpy.core.settings.DefaultPreferences.eps):
+    A = deepcopy(qMat)
+    numCols = A.shape[1]
+    R = np.zeros((numCols,numCols))
+    V = A
+
+    for k in range(numCols):
+        # Scale
+        scl = max(Norm(E[:,k]), Norm(A[:,k]))
+
+        # Multiply the kth column of A with the basis in E:
+        ex = InnerProduct(E[:,k], A[:,k])
+        aex = np.abs(ex)
+
+        # Adjust the sign of the kth column in E:
+
+        if aex < tol*scl:
+            s = 1
+        else:
+            s = np.sign(ex/aex)
+        E[:,k] = E[:,k] * s
+
+        # Compute the norm of the kth column of A:
+        r = np.sqrt(InnerProduct(A[:,k], A[:,k]))
+        R[k,k] = r
+
+        # Compute the reflection v:
+        v = r*E[:,k] - A[:,k]
+
+        # Make it more orthogonal:
+        for i in range(k):
+            ev = InnerProduct(E[:,i],v)
+            v = v - E[:,i]*ev
+        
+        # Normalize:
+        nv = np.sqrt(InnerProduct(v,v))
+        if nv < tol*scl:
+            v = E[:,k]
+        else:
+            v = (1/nv) * v
+
+        # Store
+        V[:,k] = v
+
+        # Subtract v from the remaining columns of A:
+        for j in range(k+1,numCols):
+            # Apply the Householder reflection:
+            av = InnerProduct(v, A[:,j])
+            A[:,j] = A[:,j] - 2*v*av
+
+            # Compute other nonzero entries in the current row and store them:
+            rr = InnerProduct(E[:,k],A[:,j])
+            R[k,j] = rr
+
+            # Subtract off projections onto the current vector E[:,k]:
+            A[:,j] = A[:,j] - E[:,k]*rr
+
+
+        # # "Kind-of" vectorized version. Fix bugs
+        # J = slice(k+1,numCols)
+        # av = v.T * A[:,J]
+        # A[:,J] = A[:,J] - (v * (av*2))
+        
+        # rr = E[:,k].T * A[:,J]
+        # R[k,J] = rr.squeeze()
+        # for j in range(k+1,numCols):
+        #     # Subtract off projections onto the current vector E[:,k]:
+        #     A[:,j] = A[:,j] - E[:,k]*R[k,j]
+
+    # Form Q from the columns of V:
+    Q = E
+    for k in reversed(range(numCols)):
+        for j in range(k,numCols):
+            vq = InnerProduct(V[:,k],Q[:,j])
+            Q[:,j] = Q[:,j] - 2*(V[:,k]*vq)
+
+    return Q,R
+
+    
+
