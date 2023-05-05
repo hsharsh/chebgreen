@@ -5,7 +5,7 @@ from .preferences import cheb2prefs
 from .quasimatrix import Quasimatrix
 
 class Chebfun2(ABC):
-    def __init__(self, g, domain = None, prefs = cheb2prefs, vectorize = False):
+    def __init__(self, g, domain = None, prefs = cheb2prefs, simplify = False, vectorize = False):
         
         # Default domain is [-1,1] x [-1, 1]
         if domain == None:
@@ -19,13 +19,16 @@ class Chebfun2(ABC):
 
         self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(g, vectorize)
 
+        if simplify:
+            self.cols, self.pivotValues, self.rows = self.svd()
+
         # Write a sampletest here
     
     def __repr__(self):
         header = f"chebfun2 object\n"
         toprow = "     domain       rank               corner values\n"
         rowdta = (f"[{self.domain[0]},{self.domain[1]}] x [{self.domain[2]},{self.domain[3]}]     {self.rank}       "
-            f"[{self.cornervalues[0]:2f} {self.cornervalues[1]:2f} {self.cornervalues[2]:2f} {self.cornervalues[3]:2f}]\n")
+            f"[{self.cornervalues[0]:.3f} {self.cornervalues[1]:.3f} {self.cornervalues[2]:.3f} {self.cornervalues[3]:.3f}]\n")
         btmrow = f"vertical scale = {self.vscale:2f}"
         return header + toprow + rowdta + btmrow
     

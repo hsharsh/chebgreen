@@ -1,11 +1,13 @@
-function output_example = helmholtz()
+function output_example = helmholtz(K)
 % Helmholtz equation
 
 % Define the domain.
 dom = [0,1];
 
 % Parameter of the equation
-K = 15;
+if nargin < 1
+    K = 15
+end
 
 % Differential operator
 N = chebop(@(x,u) diff(u,2)+K^2*u, dom);

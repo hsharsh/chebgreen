@@ -2,21 +2,21 @@
 % "examples".
 % To generate the dataset corresponding to the file helmholtz.m,
 % run the command
-% generate_gl_example('helmholtz');
+% generate_gl_example('helmholtz',theta);
 
-function generate_gl_example(example_name, theta, varargin)
+function generate_example(example_name, theta, varargin)
     % Add warning about Chebfun
-    warning("This code requires the Chebfun package. See http://www.chebfun.org/download/ for installation details.")
+    assert(exist('chebfun') == 2,"This code requires the Chebfun package. See http://www.chebfun.org/download/ for installation details.")
 
     % Add examples to the MATLAB path
     addpath('examples')
 
-    sprintf('### Example = %s ###', example_name)
-
     % Load the differential operator example
     if nargin > 1
+        disp(['### Example = ', example_name, ' @ theta = ',num2str(theta), ' ###'])
         output_example = feval(example_name, theta);
     else
+        disp(['### Example = ', example_name, ' ###'])
         output_example = feval(example_name);
     end
     diff_op = output_example{1};
@@ -93,7 +93,7 @@ function generate_gl_example(example_name, theta, varargin)
 
     % Loop over the number of sampled functions f
     for i = 1:Nsample
-        sprintf("i = %d/%d",i, Nsample)
+        disp(['Step = ',num2str(i),'/',num2str(Nsample)])
         
         % Sample from a Gaussian process
         f = generate_random_fun(L);
@@ -153,17 +153,23 @@ function generate_gl_example(example_name, theta, varargin)
     U = U.*(1 + noise_level*randn(size(U)));
 
     % Save the data
+    formatSpec = '%.2f';
+    savePath = sprintf('datasets/%s',example_name);
+    if ~exist(savePath, 'dir')
+        mkdir(savePath);
+    end
+
     if nargin > 1
         if exist("ExactGreen")
-            save(sprintf('examples/datasets/%s-%s.mat',example_name,num2str(theta)),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
+            save(sprintf('%s/%s.mat',savePath,num2str(theta,formatSpec)),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
         else
-            save(sprintf('examples/datasets/%s-%s.mat',example_name,num2str(theta)),"X","Y","U","F","U_hom","XG","YG")
+            save(sprintf('%s/%s.mat',savePath,num2str(theta,formatSpec)),"X","Y","U","F","U_hom","XG","YG")
         end
     else
         if exist("ExactGreen")
-            save(sprintf('examples/datasets/%s.mat',example_name),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
+            save(sprintf('%s/data.mat',savePath),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
         else
-            save(sprintf('examples/datasets/%s.mat',example_name),"X","Y","U","F","U_hom","XG","YG")
+            save(sprintf('%s/data.mat',savePath),"X","Y","U","F","U_hom","XG","YG")
         end
     end
     
@@ -205,8 +211,7 @@ function options = solver_options()
 % (See 'help cheboppref' for more possible options.)
 options = cheboppref();
 
-% Print information to the command window while solving:
-options.display = 'iter';
+options.display = 'off'; % 'iter' : Print information at every Newton step
 
 % Option for tolerance.
 options.bvpTol = 5e-13;

@@ -15,23 +15,12 @@ def NN(numInputs = 2, numOutputs = 1, layerConfig = np.array([50, 50, 50, 50]), 
     
     layers.append(tf.keras.layers.Dense(units = numOutputs, dtype = config(tf), activation = None))
     return tf.keras.Sequential(layers)
-class Model(ABC):
-    def __init__(self, dimension = 1, layerConfig = [50, 50, 50, 50], activation = "rational", loadPath = None) -> None:
-        self.dimension = dimension
 
-        if loadPath == None:
-            self.G = NN(numInputs = dimension*2, numOutputs = dimension, layerConfig = np.array(layerConfig), activation = activation)
-            self.N = NN(numInputs = dimension, numOutputs = dimension, layerConfig = np.array(layerConfig), activation = activation)
+class GreenNN(ABC):
+    def __init__(self) -> None:
+        super().__init__()
 
-        else:
-             self.G = tf.keras.models.load_model(loadPath+"/G", compile = False)
-             self.N = tf.keras.models.load_model(loadPath+"/N", compile = False)      
-
-        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-                        initial_learning_rate=1e-3,
-                        decay_steps=10000,
-                        decay_rate=0.9)
-        
+    def build(self, dimension = 1, layerConfig = [50, 50, 50, 50], activation = 'rational', loadPath = None):    
         """
         greenlearning models benefit from using a few steps of L-BFGS optimizer during the training
         but between tensorflow probability not being available for M1 Macbooks (which I am
@@ -41,6 +30,20 @@ class Model(ABC):
         issue here, https://github.com/tensorflow/tensorflow/issues/48167, do add a few epochs of
         L-BFGS optimizer to have the model converge nicely :)
         """
+        self.dimension = dimension
+
+        if loadPath == None:
+            self.G = NN(numInputs = dimension*2, numOutputs = dimension, layerConfig = np.array(layerConfig), activation = activation)
+            self.N = NN(numInputs = dimension, numOutputs = dimension, layerConfig = np.array(layerConfig), activation = activation)
+        else:
+            assert self.checkSavedModels(loadPath), "Saved models not found" 
+            self.G = tf.keras.models.load_model(loadPath+"/G", compile = False)
+            self.N = tf.keras.models.load_model(loadPath+"/N", compile = False)
+
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+                        initial_learning_rate=1e-3,
+                        decay_steps=10000,
+                        decay_rate=0.9)
         self.optimizer = tf.keras.optimizers.Adam(learning_rate = lr_schedule,
                                                   beta_1 = 0.9,
                                                   beta_2 = 0.999,
@@ -70,7 +73,7 @@ class Model(ABC):
                 lossValue = self.lossfn(fVal, uVal)
             lossHistory['validation'].append(lossValue.numpy())
             if (epoch+1) % 100 == 0:
-                print(f"Loss at epoch {epoch}: Training = {lossHistory['training'][-1]:.3E}, Validation = {lossHistory['validation'][-1]:.3E}")
+                print(f"Loss at epoch {epoch+1}: Training = {lossHistory['training'][-1]:.3E}, Validation = {lossHistory['validation'][-1]:.3E}")
         return lossHistory
     
     # Not implemented for Green's function of dimension > 1
@@ -92,9 +95,19 @@ class Model(ABC):
     def init_loss(self, xF, xU):
         self.lossfn = LossGreensFunction(self.G, self.N, xF, xU)
     
-    def saveModels(self, path = "savedmodel"):
+    def saveModels(self, path = "temp"):
         self.G.save(path + "/G")
         self.G.save(path + "/N")
+
+    def checkSavedModels(self, loadPath):
+        return tf.saved_model.contains_saved_model(loadPath+"/G") and tf.saved_model.contains_saved_model(loadPath+"/N")
+        
+    def loadModels(self, loadPath):
+        self.G = tf.keras.models.load_model(loadPath+"/G", compile = False)
+        self.N = tf.keras.models.load_model(loadPath+"/N", compile = False)
+
+        assert (self.G.input.shape[1] == self.dimension*2 and \
+                self.N.input.shape[1] == self.dimension), "Dimension mismatch for the loaded model"
          
         
 
