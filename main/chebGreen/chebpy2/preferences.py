@@ -14,5 +14,3 @@ class Chebpy2Preferences(ABC):
         self.prefy = chebpy.core.settings.ChebPreferences()
         self.prefx.eps = 1e-8
         self.prefy.eps = 1e-8
-
-cheb2prefs = Chebpy2Preferences()

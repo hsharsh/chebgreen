@@ -1,11 +1,11 @@
 from . import chebpy
 import numpy as np
 from abc import ABC
-from .preferences import cheb2prefs
+from .preferences import Chebpy2Preferences
 from .quasimatrix import Quasimatrix
 
 class Chebfun2(ABC):
-    def __init__(self, g, domain = None, prefs = cheb2prefs, simplify = False, vectorize = False):
+    def __init__(self, g, domain = None, prefs = Chebpy2Preferences(), simplify = False, vectorize = False):
         
         # Default domain is [-1,1] x [-1, 1]
         if domain == None:
@@ -17,7 +17,7 @@ class Chebfun2(ABC):
 
         self.prefs = prefs
 
-        self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(g, vectorize)
+        self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(lambda x,y: g(x,y), vectorize)
 
         if simplify:
             self.cols, self.pivotValues, self.rows = self.svd()
@@ -57,8 +57,6 @@ class Chebfun2(ABC):
 
 
         while not isHappy and not failure:
-            # Remove this
-            # break
             grid = minSample
 
             # Sample function on a Chebyshev tensor grid:
@@ -266,9 +264,6 @@ class Chebfun2(ABC):
         V = (Qr * V1t.T).T
 
         return U, S, V
-
-        
-        
     
     @property
     def cornervalues(self):

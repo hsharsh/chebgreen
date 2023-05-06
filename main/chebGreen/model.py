@@ -1,8 +1,10 @@
 from .greenlearning.utils import DataProcessor
 from .greenlearning.model import GreenNN
+from .chebpy2 import Chebfun2, Chebpy2Preferences
 import numpy as np
 from abc import ABC
-import os
+import os,sys
+import pathlib
 
 matlab_path = "/Applications/MATLAB_R2022a.app/bin/matlab"
 
@@ -45,35 +47,48 @@ class ChebGreen(ABC):
             self.datapath = datapath
 
         # Load or fit greenlearning models on the dataset and learn a chebfun2 on them:
+        sys.stdout.flush()
         print("-------------------------------------------------------------------------------\n")
-        print("Generating/Loading greenlearning models:")
+        print("Generating chebfun2 models:")
         self.generateChebfun2Models(example)
 
 
     def generateMatlabData(self, script, example):
         for theta in self.Theta:
+            if pathlib.Path(f"datasets/{example}/{theta:.2f}.mat").is_file():
+                print(f"Dataset for for Theta = {theta:.2f}. Skipping dataset generation.")
+                continue
             examplematlab = "\'"+example+"\'"
-            cmd = f"{matlab_path} -nodisplay -nosplash -nodesktop -r \"{script}({examplematlab},{theta:.2f}); exit;\" | tail -n +11"
-            os.system(cmd)
+            matlabcmd = f"{matlab_path} -nodisplay -nosplash -nodesktop -r \"{script}({examplematlab},{theta:.2f}); exit;\" | tail -n +11"
+            with open("temp.sh", 'w') as f:
+                f.write(matlabcmd)
+                f.close()
+            os.system(f"bash temp.sh")
+            os.remove("temp.sh")
         return os.path.abspath(f"datasets/{example}")
     
 
     def generateChebfun2Models(self, example):
-        
+        model = GreenNN()
+        self.G = {}
         for theta in self.Theta:
-            model = GreenNN()
-
+            
             GreenNNPath = "savedModels/" + example + f"/{theta:.2f}"
             
             if model.checkSavedModels(loadPath = GreenNNPath):          # Check for stored models
+                print(f"Found saved model, Loading model for example \'{example}\' at Theta = {theta:.2f}")
                 model.build(dimension = 1, loadPath = GreenNNPath)
             else:
                 data = DataProcessor(self.datapath + f"/{theta:.2f}.mat")
                 data.generateDataset(valRatio = 0.95, batch_size = 256)
                 model.build(dimension = 1, layerConfig = [50,50,50,50], activation = 'rational')
-                print(f"Training greenlearning model for Example \'{example}\' at Theta = {theta:.2f}")
+                print(f"Training greenlearning model for example \'{example}\' at Theta = {theta:.2f}")
                 lossHistory = model.train(data, epochs = 3000)
                 model.saveModels(f"savedModels/{example}/{theta:.2f}")
+            
+            print(f"Learning a chebfun2 model for example \'{example}\' at Theta = {theta:.2f}")
+            self.G[theta] = (Chebfun2(model.evaluateG, domain = [0, 1, 0, 1], prefs = Chebpy2Preferences(), simplify = False))
+            print(f"Chebfun2 model added for example \'{example}\' at Theta = {theta:.2f}\n")
 
 
             

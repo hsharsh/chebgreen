@@ -19,6 +19,7 @@ def NN(numInputs = 2, numOutputs = 1, layerConfig = np.array([50, 50, 50, 50]), 
 class GreenNN(ABC):
     def __init__(self) -> None:
         super().__init__()
+        print(f"Using tensorflow {tf.__version__}")
 
     def build(self, dimension = 1, layerConfig = [50, 50, 50, 50], activation = 'rational', loadPath = None):    
         """
@@ -37,8 +38,7 @@ class GreenNN(ABC):
             self.N = NN(numInputs = dimension, numOutputs = dimension, layerConfig = np.array(layerConfig), activation = activation)
         else:
             assert self.checkSavedModels(loadPath), "Saved models not found" 
-            self.G = tf.keras.models.load_model(loadPath+"/G", compile = False)
-            self.N = tf.keras.models.load_model(loadPath+"/N", compile = False)
+            self.loadModels(loadPath)
 
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
                         initial_learning_rate=1e-3,
@@ -97,7 +97,7 @@ class GreenNN(ABC):
     
     def saveModels(self, path = "temp"):
         self.G.save(path + "/G")
-        self.G.save(path + "/N")
+        self.N.save(path + "/N")
 
     def checkSavedModels(self, loadPath):
         return tf.saved_model.contains_saved_model(loadPath+"/G") and tf.saved_model.contains_saved_model(loadPath+"/N")
@@ -105,7 +105,6 @@ class GreenNN(ABC):
     def loadModels(self, loadPath):
         self.G = tf.keras.models.load_model(loadPath+"/G", compile = False)
         self.N = tf.keras.models.load_model(loadPath+"/N", compile = False)
-
         assert (self.G.input.shape[1] == self.dimension*2 and \
                 self.N.input.shape[1] == self.dimension), "Dimension mismatch for the loaded model"
          
