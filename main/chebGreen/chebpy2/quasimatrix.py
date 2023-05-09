@@ -1,7 +1,7 @@
 from . import chebpy
 import numpy as np
 from abc import ABC, abstractmethod, abstractclassmethod
-from .utils import legpoly, abstractQR
+from .utils import chebpts, abstractQR
 
 class Quasimatrix(ABC):
     """Create a Quasimatrix in order to implement most functionality for the chebfun2 constructor"""
@@ -190,15 +190,62 @@ class Quasimatrix(ABC):
             return (w * Fvalues) @ Gvalues * rescalingFactor
         else:
             raise NotImplementedError        
-    
+
+    # Householder QR in value representation for L2-inner product
     def qr(self):
         assert self.shape[0] == np.inf, "QR decomposition is only computed for column Quasimatrices"
-        L = Quasimatrix(legpoly(n = np.linspace(0,self.shape[1], self.shape[1]).astype(int),
-                    dom = self.domain,
-                    normalize = True,
-                    prefs = self.prefs))
         
-        return abstractQR(self, L, self.prefs.eps)
+        # Compute parameters for the QR:
+        tol = np.finfo(float).eps*np.max(self.vscale)
+        n, numCols = len(self.data[0].coeffs), self.shape[1]
+
+        # Make the discrete analogue of the Quasimatrix:
+        N = 2*max(n, numCols)
+        A = np.zeros((N,numCols))        
+
+        prolongtemp = np.zeros(N)
+        for j in range(numCols):
+            a = self.data[j].funs[0]
+            prolongtemp[:len(a.coeffs)] = a.coeffs
+            a = a.onefun._coeffs2vals(prolongtemp)
+            A[:len(a),j] = a
+
+        # Create the Chebyshev nodes and quadrature weights:
+        x = chebpts(N).reshape(-1)
+        w = chebpy.core.algorithms.quadwts2(N).reshape((1,-1))
+
+        # Define norm and inner products:
+        InnerProduct = lambda f,g: w @ (f.reshape((-1,1)) * g.reshape((-1,1)))
+        Norm = lambda f: np.max(f)
+
+        #Generate a discrete E (Legendre-Chebyshev-Vandermonde matrix) directly:
+        E = np.ones(A.shape)
+        E[:,1] = x[:]
+        for k in range(2,numCols):
+            E[:,k] = ((2*k-1)*x*E[:,k-1] - (k-1)*E[:,k-2]) / k
+
+        # Scaling:
+        for k in range(numCols):
+            E[:,k] = E[:,k] * np.sqrt((2*k+1)/2)
+
+        # Note that the formulas may look different because they are corrected for zero-indexed arrays
+
+        Q, R = abstractQR(A, E, InnerProduct, Norm, tol)
+
+        Q = Quasimatrix(data = chebpy.chebfun(Q, domain = self.domain, prefs = self.prefs), transposed = False)
+
+        return Q,R
+    # Full abstract QR    
+    # def qr(self):
+    #     assert self.shape[0] == np.inf, "QR decomposition is only computed for column Quasimatrices"
+    #     L = Quasimatrix(legpoly(n = np.linspace(0,self.shape[1], self.shape[1]).astype(int),
+    #                 dom = self.domain,
+    #                 normalize = True,
+    #                 prefs = self.prefs))
+        
+    #     InnerProduct = lambda A,B: (A.T * B).item()
+    #     Norm = lambda A: A.normest
+    #     return abstractQR(self, L, InnerProduct, Norm, self.prefs.eps)
         
     ### Properties
     @property
@@ -230,7 +277,6 @@ class Quasimatrix(ABC):
     def T(self):
         # Tranpose of a quasimatrix
         return Quasimatrix(data = self.data, transposed = not self.transposed)
-       
 
     def coeffrepr(self):
         if len(self.data) == 0:

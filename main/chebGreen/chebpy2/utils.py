@@ -70,25 +70,19 @@ def legpoly(n, dom = chebpy.core.settings.DefaultPreferences.domain, normalize =
     for k in range(2,nMax+2):
         if u[ind] == k-2:
             if normalize:
-                invnrm = np.sqrt((2*k - 3)/np.diff(dom))
+                invnrm = np.sqrt((2*k - 1)/np.diff(dom))
                 P[:,ind] = Lk_2*invnrm
             else:
                 P[:,ind] = Lk_2
             
             # Update recurrence
             temp = Lk_1
-            Lk_1 = (2 - 1/k)*x*Lk_1 - (1 - 1/k)*Lk_2
+            Lk_1 = (2 - 1/(k+1))*x*Lk_1 - (1 - 1/(k+1))*Lk_2
             Lk_2 = temp
             ind += 1
     return chebpy.chebfun(P[:,indices], dom, prefs = prefs)
 
-def Norm(A):
-    return A.normest
-    
-def InnerProduct(A,B):
-    return (A.T * B).item()
-
-def abstractQR(qMat, E, tol = chebpy.core.settings.DefaultPreferences.eps):
+def abstractQR(qMat, E, InnerProduct, Norm, tol = chebpy.core.settings.DefaultPreferences.eps):
     A = deepcopy(qMat)
     numCols = A.shape[1]
     R = np.zeros((numCols,numCols))
@@ -97,7 +91,6 @@ def abstractQR(qMat, E, tol = chebpy.core.settings.DefaultPreferences.eps):
     for k in range(numCols):
         # Scale
         scl = max(Norm(E[:,k]), Norm(A[:,k]))
-
         # Multiply the kth column of A with the basis in E:
         ex = InnerProduct(E[:,k], A[:,k])
         aex = np.abs(ex)
@@ -109,7 +102,7 @@ def abstractQR(qMat, E, tol = chebpy.core.settings.DefaultPreferences.eps):
         else:
             s = np.sign(ex/aex)
         E[:,k] = E[:,k] * s
-
+        
         # Compute the norm of the kth column of A:
         r = np.sqrt(InnerProduct(A[:,k], A[:,k]))
         R[k,k] = r
