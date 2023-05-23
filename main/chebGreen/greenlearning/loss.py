@@ -1,24 +1,24 @@
-from .backend import tf, ABC, config
+from .backend import torch, np, ABC, config, device
 from .utils import generateEvaluationGrid
 from .quadrature_weights import get_weights
 
 class LossGreensFunction(ABC):
-    def __init__(self, G, N, xF, xU) -> None:
+    def __init__(self, G, N, xF, xU, device) -> None:
         super().__init__()
         self.G = G
         self.N = N
-        self.xF, self.xU = xF, xU
-        self.wF = tf.constant(get_weights('uniform', xF).T, dtype = config(tf))
-        self.wU = tf.constant(get_weights('uniform', xU).T, dtype = config(tf))
-        self.X = generateEvaluationGrid(self.xU, self.xF)
+        self.xF, self.xU = torch.from_numpy(xF).to(device), torch.from_numpy(xU).to(device)
+        self.wF = torch.from_numpy(get_weights('uniform', xF).astype(dtype = config(np)).T).to(device)
+        self.wU = torch.from_numpy(get_weights('uniform', xU).astype(dtype = config(np)).T).to(device)
+        self.X = generateEvaluationGrid(self.xU, self.xF).to(device)
 
-    @tf.function
     def __call__(self, fTrain, uTrain):
         nF, nU = self.xF.shape[0], self.xU.shape[0]
-        G = tf.transpose(tf.reshape(self.G(self.X),(nF, nU)))
+        G = torch.reshape(self.G(self.X),(nF, nU)).T
         u_hom = self.N(self.xU)
 
-        uPred = tf.transpose(tf.matmul(G, tf.multiply(fTrain, self.wF), transpose_b = True) + u_hom)
-        loss = tf.divide(tf.math.reduce_sum(tf.multiply(tf.square(uTrain - uPred),self.wU), axis = 1), \
-                         tf.math.reduce_sum(tf.multiply(tf.square(uTrain),self.wU), axis = 1))
-        return tf.math.reduce_mean(loss)
+        uPred = (torch.matmul(G, torch.mul(fTrain, self.wF).T) + u_hom).T
+        
+        loss = torch.sum(torch.square(uTrain - uPred)*self.wU, dim = 1)/ \
+                torch.sum(torch.square(uTrain)*self.wU, dim = 1)
+        return torch.mean(loss)

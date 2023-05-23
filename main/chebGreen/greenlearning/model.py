@@ -1,56 +1,81 @@
-from .backend import tf, np, ABC, config
-from .utils import generateEvaluationGrid
+from .backend import torch, np, Path, ABC, config, device
 from .activations import get_activation
 from .loss import LossGreensFunction
 
 
 
-def NN(numInputs = 2, numOutputs = 1, layerConfig = np.array([50, 50, 50, 50]), activation = "rational", dtype = config(tf)):
-    layers = []
-    layers.append(tf.keras.layers.InputLayer(input_shape = (numInputs,), dtype = config(tf)))
-        
-    for units in layerConfig:
-        layers.append(tf.keras.layers.Dense(units = units, dtype = config(tf)))
-        layers.append(get_activation(activation))
-    
-    layers.append(tf.keras.layers.Dense(units = numOutputs, dtype = config(tf), activation = None))
-    return tf.keras.Sequential(layers)
+class NN(torch.nn.Module):
+    def __init__(self,
+                 numInputs = 2,
+                 numOutputs = 1,
+                 layerConfig = [50, 50, 50, 50],
+                 activation = "rational",
+                 dtype = config(torch),
+                 device = device):
+        # Initialize the Layers. We hold all layers in a ModuleList.
 
+        super(NN, self).__init__()
+
+        self.layers = torch.nn.ModuleList()
+        self.activationFunctions = torch.nn.ModuleList()
+
+        self.layers.append(torch.nn.Linear(
+                                in_features  = numInputs,
+                                out_features = layerConfig[0],
+                                bias         = True ).to(dtype = dtype, device = device))
+        self.activationFunctions.append(get_activation(activation))
+
+        for neuronsIn, neuronsOut in zip(layerConfig[:-1],layerConfig[1:]):
+            self.layers.append(torch.nn.Linear(
+                                in_features  = neuronsIn,
+                                out_features = neuronsOut,
+                                bias         = True ).to(dtype = dtype, device = device))
+            self.activationFunctions.append(get_activation(activation))
+
+        self.layers.append(torch.nn.Linear(
+                                in_features  = layerConfig[-1],
+                                out_features = numOutputs,
+                                bias         = True ).to(dtype = dtype, device = device))
+        
+        # Initialize layers
+        for layer in self.layers:
+            torch.nn.init.xavier_normal_(layer.weight)
+            torch.nn.init.zeros_(layer.bias)
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+
+        # Loop over all the layers and activation functions.
+        for layer, activation in zip(self.layers[:-1],self.activationFunctions):
+            X = activation(layer(X))
+        
+        # Last layer does not take an activation function.
+        return self.layers[-1](X)
+    
 class GreenNN(ABC):
     def __init__(self) -> None:
         super().__init__()
-        print(f"Using tensorflow {tf.__version__}")
 
-    def build(self, dimension = 1, layerConfig = [50, 50, 50, 50], activation = 'rational', loadPath = None):    
-        """
-        greenlearning models benefit from using a few steps of L-BFGS optimizer during the training
-        but between tensorflow probability not being available for M1 Macbooks (which I am
-        protyping this code on) and tf2 dropping the contrib module which had an implementation for 
-        supporting external optimizers like ScipyOptimizerInterface, this code just uses an Adam
-        optimizer to train the G and N networks. But in case there is some developement on the
-        issue here, https://github.com/tensorflow/tensorflow/issues/48167, do add a few epochs of
-        L-BFGS optimizer to have the model converge nicely :)
-        """
+    def build(self, dimension = 1, layerConfig = [50, 50, 50, 50], activation = 'rational', loadPath = None, device = device):
         self.dimension = dimension
+        self.device = device
+        self.layerConfig = layerConfig
+        self.activation = activation
 
         if loadPath == None:
-            self.G = NN(numInputs = dimension*2, numOutputs = dimension, layerConfig = np.array(layerConfig), activation = activation)
-            self.N = NN(numInputs = dimension, numOutputs = dimension, layerConfig = np.array(layerConfig), activation = activation)
+            self.G = NN(numInputs = dimension*2, numOutputs = dimension, layerConfig = layerConfig, activation = activation).to(self.device)
+            self.N = NN(numInputs = dimension, numOutputs = dimension, layerConfig = layerConfig, activation = activation).to(self.device)
         else:
             assert self.checkSavedModels(loadPath), "Saved models not found" 
-            self.loadModels(loadPath)
+            self.loadModels(loadPath, device = device)
 
-        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-                        initial_learning_rate=1e-2,
-                        decay_steps=100,
-                        decay_rate=0.9)
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate = lr_schedule,
-                                                  beta_1 = 0.9,
-                                                  beta_2 = 0.999,
-                                                  epsilon = 1e-8)
-    
     def train(self, data, epochs = {'adam':int(1000), 'lbfgs':int(200)}):
         
+        params = list(self.G.parameters()) + list(self.N.parameters())
+
+        self.optimizerAdam = torch.optim.Adam(params, lr = 1e-2)
+        self.schedulerAdam = torch.optim.lr_scheduler.StepLR(self.optimizerAdam, step_size = 100, gamma = 0.9)
+        self.optimizerLBFGS = torch.optim.LBFGS(params, lr = 1e-2)
+
         assert data.xF.shape[1] == self.dimension and data.xU.shape[1] == self.dimension,\
                 f"Dimension of evaluation points for forcing, {data.xF.shape[1]}, and response, \
                 {data.xU.shape[1]}, should match with the model dimension, {self.dimension}"
@@ -58,22 +83,58 @@ class GreenNN(ABC):
         self.init_loss(data.xF, data.xU)
 
         lossHistory = {'training': [], 'validation':[]}
-        for epoch in range(epochs):
+
+        print("Training with Adam:")
+        for epoch in range(epochs['adam']):
             for fTrain, uTrain in data.trainDataset:
-                with tf.GradientTape() as tape:
-                    lossValue = self.lossfn(fTrain,uTrain)
-                    
-                gradG, gradN = tape.gradient(lossValue, [self.G.trainable_weights, self.N.trainable_weights])
-                self.optimizer.apply_gradients(zip(gradG, self.G.trainable_weights))
-                self.optimizer.apply_gradients(zip(gradN, self.N.trainable_weights))
+                fTrain, uTrain = fTrain.to(device), uTrain.to(device)
+                self.G.train()
+                self.N.train()
+
+                self.optimizerAdam.zero_grad()
+                lossValue = self.lossfn(fTrain, uTrain)
+                lossValue.backward()
+
+                self.optimizerAdam.step()
+                self.schedulerAdam.step()
 
             # Change this to be an average over batches. Currently assuming a single batch
-            lossHistory['training'].append(lossValue.numpy())
-            for fVal, uVal in data.valDataset:
-                lossValue = self.lossfn(fVal, uVal)
-            lossHistory['validation'].append(lossValue.numpy())
+            lossHistory['training'].append(lossValue.item())
+
+            with torch.no_grad():
+                for fVal, uVal in data.valDataset:
+                    lossValue = self.lossfn(fVal.to(device), uVal.to(device))
+            lossHistory['validation'].append(lossValue.item())
             if (epoch+1) % 100 == 0:
                 print(f"Loss at epoch {epoch+1}: Training = {lossHistory['training'][-1]:.3E}, Validation = {lossHistory['validation'][-1]:.3E}")
+        
+        print("Training with LBFGS:")
+        for epoch in range(epochs['lbfgs']):
+            for fTrain, uTrain in data.trainDataset:
+                fTrain, uTrain = fTrain.to(device), uTrain.to(device)
+                self.G.train()
+                self.N.train()
+
+                def closure():
+                    self.optimizerLBFGS.zero_grad()
+                    lossValue = self.lossfn(fTrain, uTrain)
+                    lossValue.backward()
+                    return lossValue
+                with torch.no_grad():
+                    lossValue = self.lossfn(fTrain, uTrain)
+                self.optimizerLBFGS.step(closure)
+
+            
+            # Change this to be an average over batches. Currently assuming a single batch
+            lossHistory['training'].append(lossValue.item())
+
+            with torch.no_grad():
+                for fVal, uVal in data.valDataset:
+                    lossValue = self.lossfn(fVal.to(device), uVal.to(device))
+            lossHistory['validation'].append(lossValue.item())
+            if (epoch+1) % 10 == 0:
+                print(f"Loss at epoch {epoch+1}: Training = {lossHistory['training'][-1]:.3E}, Validation = {lossHistory['validation'][-1]:.3E}")
+
         return lossHistory
     
     # Not implemented for Green's function of dimension > 1
@@ -87,26 +148,35 @@ class GreenNN(ABC):
         assert(x.shape == s.shape), "Both input need to have the same shape"
         shape = x.shape
         if x.dtype == config(np):
-            X = tf.constant(np.vstack([x.ravel(), s.ravel()]).T, dtype = config(tf))
-        
-        return self.G(X).numpy().reshape(shape)
+            X = torch.tensor(np.vstack([x.ravel(), s.ravel()]).T, dtype = config(torch)).to(self.device)
+        with torch.no_grad():
+            G = self.G(X).cpu().numpy().reshape(shape)
+        return G 
 
 
     def init_loss(self, xF, xU):
-        self.lossfn = LossGreensFunction(self.G, self.N, xF, xU)
+        self.lossfn = LossGreensFunction(self.G, self.N, xF, xU, self.device)
     
     def saveModels(self, path = "temp"):
-        self.G.save(path + "/G")
-        self.N.save(path + "/N")
+        savedict = {'dimension': self.dimension,
+            'layerConfig': self.layerConfig,
+            'activation': self.activation,
+            'G_state_dict': self.G.state_dict(),
+            'N_state_dict': self.N.state_dict(),
+           }
+        Path(path).mkdir(parents=True, exist_ok=True)
+        torch.save(savedict, path + "/model.pth")
 
     def checkSavedModels(self, loadPath):
-        return tf.saved_model.contains_saved_model(loadPath+"/G") and tf.saved_model.contains_saved_model(loadPath+"/N")
+        return Path(loadPath+"/model.pth").is_file()
         
-    def loadModels(self, loadPath):
-        self.G = tf.keras.models.load_model(loadPath+"/G", compile = False)
-        self.N = tf.keras.models.load_model(loadPath+"/N", compile = False)
-        assert (self.G.input.shape[1] == self.dimension*2 and \
-                self.N.input.shape[1] == self.dimension), "Dimension mismatch for the loaded model"
+    def loadModels(self, loadPath, device = device):
+        model = torch.load(loadPath+'/model.pth')
+        self.G = NN(numInputs = model['dimension']*2, numOutputs = model['dimension'], layerConfig = model['layerConfig'], activation = model['activation']).to(device)
+        self.N = NN(numInputs = model['dimension'], numOutputs = model['dimension'], layerConfig = model['layerConfig'], activation = model['activation']).to(device)
+        self.G.load_state_dict(model['G_state_dict'])
+        self.N.load_state_dict(model['N_state_dict'])
+        
          
         
 
