@@ -8,7 +8,7 @@ class DataProcessor(ABC):
         self.seed = seed
         
     
-    def generateDataset(self, valRatio = 0.8, batch_size  = 32):
+    def generateDataset(self, trainRatio = 0.8, batch_size  = 32):
         data = scipy.io.loadmat(self.filePath)
         np.random.seed(self.seed)
 
@@ -19,7 +19,7 @@ class DataProcessor(ABC):
         self.u_hom = data['U_hom'].astype(dtype = config(np))
 
         # Train-validation split
-        iSplit = int(valRatio*data['F'].shape[1])
+        iSplit = int(trainRatio*data['F'].shape[1])
         self.trainDataset = tf.data.Dataset.from_tensor_slices((data['F'][:,:iSplit].T.astype(dtype = config(np)), data['U'][:,:iSplit].T.astype(dtype = config(np))))
         self.trainDataset = self.trainDataset.shuffle(buffer_size = buffer_size).batch(batch_size)
 

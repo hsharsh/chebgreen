@@ -1,12 +1,12 @@
 from .greenlearning.utils import DataProcessor
 from .greenlearning.model import GreenNN
-from .chebpy2 import Chebfun2, Chebpy2Preferences
+from .chebpy2 import Chebfun2, Chebpy2Preferences, Quasimatrix
 import numpy as np
 from abc import ABC
 import os,sys
 import pathlib
 
-matlab_path = "/Applications/MATLAB_R2022a.app/bin/matlab"
+matlab_path = "/Applications/MATLAB_R2023a.app/bin/matlab"
 
 class ChebGreen(ABC):
     def __init__(self,
@@ -80,15 +80,57 @@ class ChebGreen(ABC):
                 model.build(dimension = 1, loadPath = GreenNNPath)
             else:
                 data = DataProcessor(self.datapath + f"/{theta:.2f}.mat")
-                data.generateDataset(valRatio = 0.95, batch_size = 256)
+                data.generateDataset(trainRatio = 0.95, batch_size = 256)
                 model.build(dimension = 1, layerConfig = [50,50,50,50], activation = 'rational')
                 print(f"Training greenlearning model for example \'{example}\' at Theta = {theta:.2f}")
-                lossHistory = model.train(data, epochs = 3000)
+                lossHistory = model.train(data, epochs = 10000)
                 model.saveModels(f"savedModels/{example}/{theta:.2f}")
             
             print(f"Learning a chebfun2 model for example \'{example}\' at Theta = {theta:.2f}")
             self.G[theta] = (Chebfun2(model.evaluateG, domain = [0, 1, 0, 1], prefs = Chebpy2Preferences(), simplify = False))
             print(f"Chebfun2 model added for example \'{example}\' at Theta = {theta:.2f}\n")
+        
+        maxRank = np.min(np.array([self.G[theta].rank for theta in self.Theta]))
+
+        for theta in self.Theta:
+            self.G[theta].truncate(maxRank)
+
+    def generateNewModel(self, theta):
+        pass
+
+def compute_interp_coeffs(models : np.array, targetParam: np.array) -> np.array:
+    """Computes the interpolation coefficients (based on fitting Lagrange polynomials) for performing interpolation,
+    when the parameteric space is 1D. Note that the function takes in parameters of any dimnesions
+
+    --------------------------------------------------------------------------------------------------------------------
+    Arguments:
+        models: Set of models (EGF objects) which are used to generate an interoplated model at the parameter
+            targetParam.
+        targetParam: An array of size (n_{param_dimension} x 1) array which defines the parameters for the model which
+            we want to interpolate.
+
+    --------------------------------------------------------------------------------------------------------------------
+    Returns:
+        A numpy array of Interpolation coefficents index in the same way as in the set models.
+    """
+    assert(not models == True)
+
+    if (models[0].params.shape[0]!= 1):
+        raise RuntimeError("Lagrange Polynomial based interpolation requires the parameteric space to be 1D.")
+
+
+    a = np.ones(len(models))
+    if len(models[0].params) == 1:
+        thetas = [model.params[0] for model in models]
+        theta = targetParam[0] # Define the target parameter
+        for i,t1 in enumerate(thetas):
+            for j,t2 in enumerate(thetas):
+                if i != j:
+                    a[i] = a[i]*((theta - t2)/(t1 - t2))
+
+    return a
+
+
 
 
             

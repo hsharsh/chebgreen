@@ -41,8 +41,8 @@ class GreenNN(ABC):
             self.loadModels(loadPath)
 
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-                        initial_learning_rate=1e-3,
-                        decay_steps=10000,
+                        initial_learning_rate=1e-2,
+                        decay_steps=100,
                         decay_rate=0.9)
         self.optimizer = tf.keras.optimizers.Adam(learning_rate = lr_schedule,
                                                   beta_1 = 0.9,

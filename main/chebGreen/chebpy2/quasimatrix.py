@@ -218,15 +218,18 @@ class Quasimatrix(ABC):
         InnerProduct = lambda f,g: w @ (f.reshape((-1,1)) * g.reshape((-1,1)))
         Norm = lambda f: np.max(f)
 
-        #Generate a discrete E (Legendre-Chebyshev-Vandermonde matrix) directly:
-        E = np.ones(A.shape)
-        E[:,1] = x[:]
-        for k in range(2,numCols):
-            E[:,k] = ((2*k-1)*x*E[:,k-1] - (k-1)*E[:,k-2]) / k
+        # # Generate a discrete E (Legendre-Chebyshev-Vandermonde matrix) directly:
+        # E = np.ones(A.shape)
+        # E[:,1] = x[:]
+        # for k in range(2,numCols):
+        #     E[:,k] = ((2*k-1)*x*E[:,k-1] - (k-1)*E[:,k-2]) / k
+        # # Scaling:
+        # for k in range(numCols):
+        #     E[:,k] = E[:,k] * np.sqrt((2*k+1)/2)
 
-        # Scaling:
+        E = np.ones(A.shape)
         for k in range(numCols):
-            E[:,k] = E[:,k] * np.sqrt((2*k+1)/2)
+            E[:,k] = np.sin( (x - self.domain[0])/(np.diff(self.domain))*(k+1)*np.pi)
 
         # Note that the formulas may look different because they are corrected for zero-indexed arrays
 
@@ -235,7 +238,8 @@ class Quasimatrix(ABC):
         Q = Quasimatrix(data = chebpy.chebfun(Q, domain = self.domain, prefs = self.prefs), transposed = False)
 
         return Q,R
-    # Full abstract QR    
+    
+    # # Full abstract QR    
     # def qr(self):
     #     assert self.shape[0] == np.inf, "QR decomposition is only computed for column Quasimatrices"
     #     L = Quasimatrix(legpoly(n = np.linspace(0,self.shape[1], self.shape[1]).astype(int),

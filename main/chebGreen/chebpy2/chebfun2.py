@@ -22,6 +22,7 @@ class Chebfun2(ABC):
         if simplify:
             U, S, Vt = self.svd()
             self.cols, self.pivotValues, self.rows = U, 1/S, Vt
+            self.truncate(np.floor(2*len(self.pivotValues)/np.pi).astype(int))
 
         # Write a sampletest here
     
@@ -247,7 +248,7 @@ class Chebfun2(ABC):
     def cdr(self):
         return self.cols, np.diag(1/self.pivotValues), self.rows
     
-    def svd(self, truncate = None):
+    def svd(self):
         C, D, R = self.cdr()
         
         # If the function is the zero function, then special care is required:
@@ -263,10 +264,11 @@ class Chebfun2(ABC):
         U1, S, V1t = np.linalg.svd(Rl @ D @ Rr.T)
         U = Ql * U1
         V = (Qr * V1t.T).T
-        if truncate is None:
-            return U, S, V
-        else:
-            return U[:,:truncate], S[:truncate], V[:truncate,:]
+        
+        return U, S, V
+    
+    def truncate(self, K):
+        self.cols, self.pivotValues, self.rows = self.cols[:,:K], self.pivotValues[:K], self.rows[:K,:]
     
     @property
     def cornervalues(self):

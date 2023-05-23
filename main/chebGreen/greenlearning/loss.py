@@ -10,12 +10,12 @@ class LossGreensFunction(ABC):
         self.xF, self.xU = xF, xU
         self.wF = tf.constant(get_weights('uniform', xF).T, dtype = config(tf))
         self.wU = tf.constant(get_weights('uniform', xU).T, dtype = config(tf))
-    
+        self.X = generateEvaluationGrid(self.xU, self.xF)
+
     @tf.function
     def __call__(self, fTrain, uTrain):
-        X = generateEvaluationGrid(self.xU, self.xF)
         nF, nU = self.xF.shape[0], self.xU.shape[0]
-        G = tf.transpose(tf.reshape(self.G(X),(nF, nU)))
+        G = tf.transpose(tf.reshape(self.G(self.X),(nF, nU)))
         u_hom = self.N(self.xU)
 
         uPred = tf.transpose(tf.matmul(G, tf.multiply(fTrain, self.wF), transpose_b = True) + u_hom)
