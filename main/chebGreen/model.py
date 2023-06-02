@@ -1,12 +1,7 @@
 from .greenlearning.utils import DataProcessor
 from .greenlearning.model import GreenNN
 from .chebpy2 import Chebfun2, Chebpy2Preferences, Quasimatrix
-import numpy as np
-from abc import ABC
-import os,sys
-import pathlib
-
-matlab_path = "/Applications/MATLAB_R2023a.app/bin/matlab"
+from .backend import os, sys, Path, np, ABC, MATLABPath
 
 class ChebGreen(ABC):
     def __init__(self,
@@ -55,11 +50,11 @@ class ChebGreen(ABC):
 
     def generateMatlabData(self, script, example):
         for theta in self.Theta:
-            if pathlib.Path(f"datasets/{example}/{theta:.2f}.mat").is_file():
+            if Path(f"datasets/{example}/{theta:.2f}.mat").is_file():
                 print(f"Dataset for for Theta = {theta:.2f}. Skipping dataset generation.")
                 continue
             examplematlab = "\'"+example+"\'"
-            matlabcmd = f"{matlab_path} -nodisplay -nosplash -nodesktop -r \"{script}({examplematlab},{theta:.2f}); exit;\" | tail -n +11"
+            matlabcmd = f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \"{script}({examplematlab},{theta:.2f}); exit;\" | tail -n +11"
             with open("temp.sh", 'w') as f:
                 f.write(matlabcmd)
                 f.close()
