@@ -48,3 +48,28 @@ def generateEvaluationGrid(xU, xF):
         x.append(torch.reshape(torch.tile(xU[:,i].reshape((1,nU)), [nF,1]), (nF*nU,1)))
         y.append(torch.reshape(torch.tile(xF[:,i].reshape((nF,1)), [1,nU]), (nF*nU,1)))
     return torch.stack(x+y, dim = 1)[...,0]
+
+
+def approximateDistanceFunction(x, y, dom, device):
+    def distance(x1, y1, x2, y2):
+        return torch.sqrt(torch.square(x2-x1) + torch.square(y2-y1))
+
+    def lineSegment(x, y, x1, y1, x2, y2):
+        L = distance(x1, y1, x2, y2)
+        xc, yc = (x1+x2)/2, (y1+y2)/2
+        f = (1/L) * ((x-x1)*(y2-y1) - (y-y1) * (x2-x1))
+        t = (1/L) * ((L/2)**2 - torch.square(distance(x,y,xc,yc)))
+        phi = torch.sqrt(torch.square(t) + torch.pow(f,4))
+        return torch.sqrt(torch.square(f) + 0.25 * torch.square(phi-t))
+    
+    R = torch.zeros((x.shape[0],1))
+    segments = torch.from_numpy(np.array([[dom[0], dom[2], dom[1], dom[2]],
+                         [dom[1], dom[2], dom[1], dom[3]],
+                         [dom[1], dom[3], dom[0], dom[3]],
+                         [dom[0], dom[3], dom[0], dom[2]]
+                        ]).astype(config(np))).to(device)
+    phi = []
+    for i in range(4):
+        phi.append(lineSegment(x,y,segments[i,0], segments[i,1], segments[i,2], segments[i,3]))
+    Phi = phi[0]*phi[1]*phi[2]*phi[3]/(phi[0]+phi[1]+phi[2]+phi[3])
+    return Phi

@@ -1,5 +1,5 @@
 from .backend import tf, np, ABC, config
-from .utils import generateEvaluationGrid
+from .utils import generateEvaluationGrid, approximateDistanceFunction
 from .activations import get_activation
 from .loss import LossGreensFunction
 
@@ -21,7 +21,7 @@ class GreenNN(ABC):
         super().__init__()
         print(f"Using tensorflow {tf.__version__}")
 
-    def build(self, dimension = 1, layerConfig = [50, 50, 50, 50], activation = 'rational', loadPath = None):    
+    def build(self, dimension = 1, domain = np.array([0,1,0,1]), layerConfig = [50, 50, 50, 50], activation = 'rational', loadPath = None):    
         """
         greenlearning models benefit from using a few steps of L-BFGS optimizer during the training
         but between tensorflow probability not being available for M1 Macbooks (which I am
@@ -32,6 +32,7 @@ class GreenNN(ABC):
         L-BFGS optimizer to have the model converge nicely :)
         """
         self.dimension = dimension
+        self.domain = domain
 
         if loadPath == None:
             self.G = NN(numInputs = dimension*2, numOutputs = dimension, layerConfig = np.array(layerConfig), activation = activation)
@@ -58,7 +59,7 @@ class GreenNN(ABC):
         self.init_loss(data.xF, data.xU)
 
         lossHistory = {'training': [], 'validation':[]}
-        for epoch in range(epochs):
+        for epoch in range(int(epochs['adam'])):
             for fTrain, uTrain in data.trainDataset:
                 with tf.GradientTape() as tape:
                     lossValue = self.lossfn(fTrain,uTrain)
@@ -89,11 +90,13 @@ class GreenNN(ABC):
         if x.dtype == config(np):
             X = tf.constant(np.vstack([x.ravel(), s.ravel()]).T, dtype = config(tf))
         
-        return self.G(X).numpy().reshape(shape)
+        G = (tf.reshape(approximateDistanceFunction(X[:,0], X[:,1],
+                                            self.domain.astype(config(np))),(-1,1))*self.G(X)).numpy().reshape(shape)
+        return G
 
 
     def init_loss(self, xF, xU):
-        self.lossfn = LossGreensFunction(self.G, self.N, xF, xU)
+        self.lossfn = LossGreensFunction(self.G, self.N, xF, xU, self.domain)
     
     def saveModels(self, path = "temp"):
         self.G.save(path + "/G")

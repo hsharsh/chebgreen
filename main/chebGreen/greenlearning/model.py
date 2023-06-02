@@ -1,6 +1,7 @@
 from .backend import torch, np, Path, ABC, config, device
 from .activations import get_activation
 from .loss import LossGreensFunction
+from .utils import approximateDistanceFunction
 
 
 
@@ -55,8 +56,9 @@ class GreenNN(ABC):
     def __init__(self) -> None:
         super().__init__()
 
-    def build(self, dimension = 1, layerConfig = [50, 50, 50, 50], activation = 'rational', loadPath = None, device = device):
+    def build(self, dimension = 1, domain = np.array([0,1,0,1]), layerConfig = [50, 50, 50, 50], activation = 'rational', loadPath = None, device = device):
         self.dimension = dimension
+        self.domain = domain
         self.device = device
         self.layerConfig = layerConfig
         self.activation = activation
@@ -68,7 +70,7 @@ class GreenNN(ABC):
             assert self.checkSavedModels(loadPath), "Saved models not found" 
             self.loadModels(loadPath, device = device)
 
-    def train(self, data, epochs = {'adam':int(1000), 'lbfgs':int(200)}):
+    def train(self, data, epochs = {'adam':1000, 'lbfgs':400}):
         
         params = list(self.G.parameters()) + list(self.N.parameters())
 
@@ -85,7 +87,7 @@ class GreenNN(ABC):
         lossHistory = {'training': [], 'validation':[]}
 
         print("Training with Adam:")
-        for epoch in range(epochs['adam']):
+        for epoch in range(int(epochs['adam'])):
             for fTrain, uTrain in data.trainDataset:
                 fTrain, uTrain = fTrain.to(device), uTrain.to(device)
                 self.G.train()
@@ -109,7 +111,7 @@ class GreenNN(ABC):
                 print(f"Loss at epoch {epoch+1}: Training = {lossHistory['training'][-1]:.3E}, Validation = {lossHistory['validation'][-1]:.3E}")
         
         print("Training with LBFGS:")
-        for epoch in range(epochs['lbfgs']):
+        for epoch in range(int(epochs['lbfgs'])):
             for fTrain, uTrain in data.trainDataset:
                 fTrain, uTrain = fTrain.to(device), uTrain.to(device)
                 self.G.train()
@@ -150,12 +152,14 @@ class GreenNN(ABC):
         if x.dtype == config(np):
             X = torch.tensor(np.vstack([x.ravel(), s.ravel()]).T, dtype = config(torch)).to(self.device)
         with torch.no_grad():
-            G = self.G(X).cpu().numpy().reshape(shape)
+            G = (approximateDistanceFunction(X[:,0], X[:,1],
+                                             self.domain.astype(config(np)),
+                                             self.device).reshape((-1,1))*self.G(X)).cpu().numpy().reshape(shape)
         return G 
 
 
     def init_loss(self, xF, xU):
-        self.lossfn = LossGreensFunction(self.G, self.N, xF, xU, self.device)
+        self.lossfn = LossGreensFunction(self.G, self.N, xF, xU, self.domain, self.device)
     
     def saveModels(self, path = "temp"):
         savedict = {'dimension': self.dimension,

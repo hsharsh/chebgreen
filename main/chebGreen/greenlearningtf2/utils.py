@@ -33,3 +33,28 @@ def generateEvaluationGrid(xU, xF):
         x.append(tf.reshape(tf.tile(xU[:,i].reshape((1,nU)), [nF,1]), (nF*nU,1)))
         y.append(tf.reshape(tf.tile(xF[:,i].reshape((nF,1)), [1,nU]), (nF*nU,1)))
     return tf.concat(x+y, axis = 1)
+
+def approximateDistanceFunction(x, y, domain):
+    def distance(x1, y1, x2, y2):
+        return tf.math.sqrt(tf.square(x2-x1) + tf.square(y2-y1))
+
+    def lineSegment(x, y, x1, y1, x2, y2):
+        L = distance(x1, y1, x2, y2)
+        xc, yc = (x1+x2)/2, (y1+y2)/2
+        f = (1/L) * ((x-x1)*(y2-y1) - (y-y1) * (x2-x1))
+        t = (1/L) * ((L/2)**2 - tf.square(distance(x,y,xc,yc)))
+        phi = tf.math.sqrt(tf.square(t) + tf.math.pow(f,4))
+        return tf.math.sqrt(tf.square(f) + 0.25 * tf.square(phi-t))
+    
+    R = tf.zeros((x.shape[0],1))
+    segments = tf.constant(np.array([[domain[0], domain[2], domain[1], domain[2]],
+                         [domain[1], domain[2], domain[1], domain[3]],
+                         [domain[1], domain[3], domain[0], domain[3]],
+                         [domain[0], domain[3], domain[0], domain[2]]
+                        ]), dtype = config(tf))
+    phi = []
+    for i in range(4):
+        phi.append(lineSegment(x,y,segments[i,0], segments[i,1], segments[i,2], segments[i,3]))
+    Phi = phi[0]*phi[1]*phi[2]*phi[3]/(phi[0]+phi[1]+phi[2]+phi[3])
+    
+    return Phi

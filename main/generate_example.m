@@ -61,11 +61,11 @@ function generate_example(example_name, theta, varargin)
     noise_level = 0;
 
     % Training points for f
-    Nf = 200;
+    Nf = 1000;
     Y = linspace(dom(1), dom(2), Nf)';
 
     % Training points for u
-    Nu = 100;
+    Nu = 1000;
     X = linspace(dom(1), dom(2), Nu)';
 
     % Evaluation points for G
