@@ -75,10 +75,10 @@ class ChebGreen(ABC):
                 model.build(dimension = 1, loadPath = GreenNNPath)
             else:
                 data = DataProcessor(self.datapath + f"/{theta:.2f}.mat")
-                data.generateDataset(trainRatio = 0.95, batch_size = 256)
+                data.generateDataset(trainRatio = 0.95)
                 model.build(dimension = 1, layerConfig = [50,50,50,50], activation = 'rational')
                 print(f"Training greenlearning model for example \'{example}\' at Theta = {theta:.2f}")
-                lossHistory = model.train(data, epochs = 10000)
+                lossHistory = model.train(data, epochs = {'adam':int(5000), 'lbfgs':int(0)})
                 model.saveModels(f"savedModels/{example}/{theta:.2f}")
             
             print(f"Learning a chebfun2 model for example \'{example}\' at Theta = {theta:.2f}")

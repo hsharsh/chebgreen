@@ -27,19 +27,16 @@ class DataProcessor(ABC):
         # self.xG = data['XG'].astype(dtype = config(np))
         # self.yG = data['YG'].astype(dtype = config(np))
 
-        # Parameters
-        params = {'batch_size': batch_size,
-                'shuffle': True,
-                'num_workers': 6}
         F = torch.from_numpy(data['F'].astype(dtype = config(np)))
         U = torch.from_numpy(data['U'].astype(dtype = config(np)))
-        # Train-validation split
-        iSplit = int(trainRatio*data['F'].shape[1])
-        trainDataset = Dataset(F[:,:iSplit].T, U[:,:iSplit].T)
-        self.trainDataset = torch.utils.data.DataLoader(trainDataset, **params)
 
-        valDataset = Dataset(F[:,iSplit:].T, U[:,iSplit:].T)
-        self.valDataset = torch.utils.data.DataLoader(valDataset, **params)
+        # Train-validation split
+        TrainTestIndices = np.random.choice(F.shape[1], F.shape[1], replace = False)
+        iSplit = int(trainRatio*data['F'].shape[1])
+        Train_Indices, Test_Indices = TrainTestIndices[:iSplit], TrainTestIndices[iSplit:]
+        
+        self.trainDataset = (F[:,Train_Indices].T, U[:,Train_Indices].T)
+        self.valDataset = (F[:,Test_Indices].T, U[:,Test_Indices].T)
 
 def generateEvaluationGrid(xU, xF):
     nF, nU, d = xF.shape[0], xU.shape[0], xU.shape[1]

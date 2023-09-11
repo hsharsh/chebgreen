@@ -286,7 +286,7 @@ class Chebfun2(ABC):
         m, n = max(min(m,9),2000), max(min(n,9),2000)
         prefx, prefy = self.prefs.prefx, self.prefs.prefy
         x, y = points2D(m, n, self.domain, prefx, prefy)
-        return np.max(self[x,y])
+        return np.max(np.abs(self[x,y]))
 
 def Max(A):
     return np.max(A), np.argmax(A)

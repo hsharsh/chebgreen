@@ -88,51 +88,51 @@ class GreenNN(ABC):
 
         print("Training with Adam:")
         for epoch in range(int(epochs['adam'])):
-            for fTrain, uTrain in data.trainDataset:
-                fTrain, uTrain = fTrain.to(device), uTrain.to(device)
-                self.G.train()
-                self.N.train()
+            fTrain, uTrain = data.trainDataset
+            fTrain, uTrain = fTrain.to(device), uTrain.to(device)
+            self.G.train()
+            self.N.train()
 
-                self.optimizerAdam.zero_grad()
-                lossValue = self.lossfn(fTrain, uTrain)
-                lossValue.backward()
+            self.optimizerAdam.zero_grad()
+            lossValue = self.lossfn(fTrain, uTrain)
+            lossValue.backward()
 
-                self.optimizerAdam.step()
-                self.schedulerAdam.step()
+            self.optimizerAdam.step()
+            self.schedulerAdam.step()
 
             # Change this to be an average over batches. Currently assuming a single batch
             lossHistory['training'].append(lossValue.item())
 
             with torch.no_grad():
-                for fVal, uVal in data.valDataset:
-                    lossValue = self.lossfn(fVal.to(device), uVal.to(device))
+                fVal, uVal = data.valDataset
+                lossValue = self.lossfn(fVal.to(device), uVal.to(device))
             lossHistory['validation'].append(lossValue.item())
             if (epoch+1) % 100 == 0:
                 print(f"Loss at epoch {epoch+1}: Training = {lossHistory['training'][-1]:.3E}, Validation = {lossHistory['validation'][-1]:.3E}")
         
         print("Training with LBFGS:")
         for epoch in range(int(epochs['lbfgs'])):
-            for fTrain, uTrain in data.trainDataset:
-                fTrain, uTrain = fTrain.to(device), uTrain.to(device)
-                self.G.train()
-                self.N.train()
+            fTrain, uTrain = data.trainDataset
+            fTrain, uTrain = fTrain.to(device), uTrain.to(device)
+            self.G.train()
+            self.N.train()
 
-                def closure():
-                    self.optimizerLBFGS.zero_grad()
-                    lossValue = self.lossfn(fTrain, uTrain)
-                    lossValue.backward()
-                    return lossValue
-                with torch.no_grad():
-                    lossValue = self.lossfn(fTrain, uTrain)
-                self.optimizerLBFGS.step(closure)
+            def closure():
+                self.optimizerLBFGS.zero_grad()
+                lossValue = self.lossfn(fTrain, uTrain)
+                lossValue.backward()
+                return lossValue
+            with torch.no_grad():
+                lossValue = self.lossfn(fTrain, uTrain)
+            self.optimizerLBFGS.step(closure)
 
             
             # Change this to be an average over batches. Currently assuming a single batch
             lossHistory['training'].append(lossValue.item())
 
             with torch.no_grad():
-                for fVal, uVal in data.valDataset:
-                    lossValue = self.lossfn(fVal.to(device), uVal.to(device))
+                fVal, uVal = data.valDataset
+                lossValue = self.lossfn(fVal.to(device), uVal.to(device))
             lossHistory['validation'].append(lossValue.item())
             if (epoch+1) % 10 == 0:
                 print(f"Loss at epoch {epoch+1}: Training = {lossHistory['training'][-1]:.3E}, Validation = {lossHistory['validation'][-1]:.3E}")

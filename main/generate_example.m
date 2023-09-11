@@ -8,6 +8,12 @@ function generate_example(example_name, theta, varargin)
     % Add warning about Chebfun
     assert(exist('chebfun') == 2,"This code requires the Chebfun package. See http://www.chebfun.org/download/ for installation details.")
 
+    Nsample     = 200;  % Number of sampled pairs f/u
+    lambda      = 0.01; % Lengthscale of kernel for sampling f
+    Nf          = 250;  % Discretization for f, lambda > 1/Nf 
+    Nu          = 100;  % Discretization for u
+    noise_level = 0;    % Noise level of the solutions u
+
     % Add examples to the MATLAB path
     addpath('examples')
 
@@ -19,11 +25,17 @@ function generate_example(example_name, theta, varargin)
         disp(['### Example = ', example_name, ' ###'])
         output_example = feval(example_name);
     end
+
+    disp(['Number of samples: ',num2str(Nsample)]);
+    disp(['Length scale: ',num2str(lambda)]);
+    disp(['Nf: ',num2str(Nf)]);
+    disp(['Nu: ',num2str(Nu)]);
+    disp(['Noise: ',num2str(noise*100),'%']);
+    disp('---------------------------------------');
+
     diff_op = output_example{1};
     dom = diff_op.domain;
     
-    % Get other parameters
-    lambda = 0.03;
     i = 2;
     linear = true;
     while i <= length(output_example)
@@ -53,19 +65,11 @@ function generate_example(example_name, theta, varargin)
     end
     n_input = size_system(2);
     n_output = size_system(1);
-    
-    % Number of sampled functions f
-    Nsample = 100;
-
-    % Noise level of the solutions u
-    noise_level = 0;
 
     % Training points for f
-    Nf = 1000;
     Y = linspace(dom(1), dom(2), Nf)';
-
+    
     % Training points for u
-    Nu = 1000;
     X = linspace(dom(1), dom(2), Nu)';
 
     % Evaluation points for G
