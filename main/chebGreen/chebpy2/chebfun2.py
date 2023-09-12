@@ -3,6 +3,7 @@ import numpy as np
 from abc import ABC
 from .preferences import Chebpy2Preferences
 from .quasimatrix import Quasimatrix
+import matplotlib.pyplot as plt
 
 class Chebfun2(ABC):
     def __init__(self, g, domain = None, prefs = Chebpy2Preferences(), simplify = False, vectorize = False):
@@ -17,7 +18,21 @@ class Chebfun2(ABC):
 
         self.prefs = prefs
 
-        self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(lambda x,y: g(x,y), vectorize)
+        if isinstance(g, list):
+            assert len(g) == 3, "Not enough parameters to initialize Chebfun2 with"
+            assert isinstance(g[0],Quasimatrix) and isinstance(g[1], np.ndarray) and isinstance(g[2],Quasimatrix), \
+                "Input format should be [Quasimatrix, Numpy array, Quasimatrix]"
+            check = (g[0].shape[1] == g[1].shape[0] and g[2].shape[0] == g[1].shape[0])
+            if check:
+                assert check and (np.linalg.matrix_rank(np.diag(g[1])) == g[1].shape[0]), \
+                    " ".join("Chebfun2 takes the input [C D R] such the bivariate function it represents is \
+                        f = C * diag(D) * R, where u is a column quasimatrix, and diag(D) is a full \
+                            rank diagonal matrix, and vt is a row quasimatrix.".split())
+
+            self.cols, self.pivotValues, self.rows = g[0], 1/g[1], g[2]
+            self.domain = np.hstack([self.rows.domain,self.cols.domain])
+        else:
+            self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(lambda x,y: g(x,y), vectorize)
 
         if simplify:
             U, S, Vt = self.svd()
@@ -236,6 +251,7 @@ class Chebfun2(ABC):
                     out = np.array([np.sum(C[y[:,i],:] @ D * R[:,x[:,i]].T, axis = 1) for i in range(n)]).T
                 else:
                     out = np.array([np.sum(C[y[j,:],:] @ D * R[:,x[j,:]].T, axis = 1) for j in range(m)])
+                return out
         if (isinstance(x,int) or isinstance(x,float)) and (isinstance(y,int) or isinstance(y,float)):
             x, y = np.array([x]), np.array([y])
         if isinstance(x,np.ndarray) and isinstance(y,np.ndarray) and x.shape == y.shape and (len(x.shape) == 1 or min(x.shape) == 1):
@@ -244,7 +260,19 @@ class Chebfun2(ABC):
             return (C[y,:] * R[:,x].T @ np.diag(D)).reshape(shape)
         
         raise NotImplementedError('Cannot evaluate chebfun2 object with given inputs')
-        
+    
+    def plot(self):
+        xx = np.linspace(0,1,2000)
+        yy = np.linspace(0,1,2000)
+        x, y = np.meshgrid(xx,yy)
+        plt.figure()
+
+        G = self[x,y]
+        levels = np.linspace(np.min(G), np.max(G), 50)
+        plt.contourf(x,y,G, 50, cmap = 'turbo', vmin = np.min(G), vmax = np.max(G), levels = levels)
+        cbar = plt.colorbar()
+
+
     def cdr(self):
         return self.cols, np.diag(1/self.pivotValues), self.rows
     
@@ -253,7 +281,7 @@ class Chebfun2(ABC):
         
         # If the function is the zero function, then special care is required:
         if np.linalg.norm(np.diag(D)) == 0:
-            width, height = np.diff(self.domain[:2]), np.diff(self.domain[2:])
+            width, height = np.diff(self.domain[2:]), np.diff(self.domain[:2])
             f = Chebfun2(lambda x,y: np.ones(x.shape), domain = self.domain, prefs = self.prefs)
             U = (1/np.sqrt(width)) * f.cols
             V = (1/np.sqrt(height)) * f.rows

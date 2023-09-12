@@ -9,7 +9,7 @@ def scaleNodes(x, dom):
         return x
 
     # Scale the nodes:
-    return dom[2]*(x + 1)/2 + dom[1]*(1 - x)/2
+    return dom[1]*(x + 1)/2 + dom[0]*(1 - x)/2
 
 def chebpts(n, dom = chebpy.core.settings.DefaultPreferences.domain, type = 2):
     #chebpts    Chebyshev points.

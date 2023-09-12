@@ -2,6 +2,7 @@ from . import chebpy
 import numpy as np
 from abc import ABC, abstractmethod, abstractclassmethod
 from .utils import chebpts, abstractQR
+from .utils import legpoly
 
 class Quasimatrix(ABC):
     """Create a Quasimatrix in order to implement most functionality for the chebfun2 constructor"""
@@ -218,23 +219,23 @@ class Quasimatrix(ABC):
         InnerProduct = lambda f,g: w @ (f.reshape((-1,1)) * g.reshape((-1,1)))
         Norm = lambda f: np.max(f)
 
-        # Generate a discrete E (Legendre-Chebyshev-Vandermonde matrix) directly:
-        E = np.ones(A.shape)
-        E[:,1] = x[:]
-        for k in range(2,numCols):
-            E[:,k] = ((2*k-1)*x*E[:,k-1] - (k-1)*E[:,k-2]) / k
-        # Scaling:
-        for k in range(numCols):
-            E[:,k] = E[:,k] * np.sqrt((2*k+1)/2)
-
+        # # Generate a discrete E (Legendre-Chebyshev-Vandermonde matrix) directly:
         # E = np.ones(A.shape)
+        # E[:,1] = x[:]
+        # for k in range(2,numCols):
+        #     E[:,k] = ((2*k-1)*x*E[:,k-1] - (k-1)*E[:,k-2]) / k
+        # # Scaling:
         # for k in range(numCols):
-        #     E[:,k] = np.sin( (x - self.domain[0])/(np.diff(self.domain))*(k+1)*np.pi)
+        #     E[:,k] = E[:,k] * np.sqrt((2*k+1)/2)
+
+        E = np.ones(A.shape)
+        for k in range(numCols):
+            E[:,k] = np.sin( (x - self.domain[0])/(np.diff(self.domain))*(k+1)*np.pi)
 
         # Note that the formulas may look different because they are corrected for zero-indexed arrays
 
         Q, R = abstractQR(A, E, InnerProduct, Norm, tol)
-
+            
         Q = Quasimatrix(data = chebpy.chebfun(Q, domain = self.domain, prefs = self.prefs), transposed = False)
 
         return Q,R
