@@ -216,7 +216,7 @@ class Quasimatrix(ABC):
 
         # Define norm and inner products:
         InnerProduct = lambda f,g: w @ (f.reshape((-1,1)) * g.reshape((-1,1)))
-        Norm = lambda f: np.max(f)
+        Norm = lambda f: np.max(np.abs(f))
 
         # Generate a discrete E (Legendre-Chebyshev-Vandermonde matrix) directly:
         E = np.ones(A.shape)

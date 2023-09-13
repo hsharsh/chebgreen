@@ -4,6 +4,7 @@ from abc import ABC
 from .preferences import Chebpy2Preferences
 from .quasimatrix import Quasimatrix
 import matplotlib.pyplot as plt
+from copy import deepcopy
 
 class Chebfun2(ABC):
     def __init__(self, g, domain = None, prefs = Chebpy2Preferences(), simplify = False, vectorize = False):
@@ -40,7 +41,10 @@ class Chebfun2(ABC):
             self.truncate(np.floor(2*len(self.pivotValues)/np.pi).astype(int))
 
         # Write a sampletest here
-    
+
+    # Prioritize the operator functions in Chebfun2 over other data types
+    __array_ufunc__ = None
+
     def __repr__(self):
         header = f"chebfun2 object\n"
         toprow = "     domain       rank               corner values\n"
@@ -205,9 +209,42 @@ class Chebfun2(ABC):
     # --------------------
     #  operator overloads
     # --------------------
-    def __add__(self, f):
+    def __add__(self, g):
+        if isinstance(int) or isinstance(float):
+            gcheb2 = Chebfun2(lambda x,y: float(g), domain = self.domain, prefs = self.prefs)
+        
+        assert isinstance(g,Chebfun2), f"Addition/Subtraction between type {type(g) and type(self)} is not supported."
+
+        # !!! Implement a check for a zero Chebfun2 (need to implement the same for a quasimatrix too)
+
+        """
+        Add Chebfun2 objects together by a compression algorithm:
+        If A = XY^T and B = WZ^T, then A + B = [X W]*[Y Z]^T,
+        [Qleft, Rleft] = qr([X W])
+        [Qright, Rright] = qr([Y Z])
+        A + B = Qleft * (Rleft * Rright') * Qright'
+        [U, S, V] = svd( Rleft * Rright' )
+        A + B = (Qleft * U) * S * (V' * Qright')     -> new low rank representation
+        """
+        f = self
+
+        # Ensure that g has smaller pivot values.
+        if np.min(np.abs(f.pivotValues)) < np.min(np.abs(g.pivotValues)):
+            f,g = g,f
+
         raise NotImplementedError
 
+    def __sub__(self, g):
+        return self + (-g)
+    
+    def __rsub__(self, g):
+        return g + (-self)
+    
+    def __neg__(self):
+        negative = deepcopy(self)
+        negative.pivotValues = -negative.pivotValues
+        return negative
+    
     def __getitem__(self, key):
         """
         Evaluate a learned chebfun2 object on numeric, array, or meshgrid inputs
