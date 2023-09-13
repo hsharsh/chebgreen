@@ -270,7 +270,7 @@ class Chebfun2(ABC):
         G = self[x,y]
         levels = np.linspace(np.min(G), np.max(G), 50)
         plt.contourf(x,y,G, 50, cmap = 'turbo', vmin = np.min(G), vmax = np.max(G), levels = levels)
-        cbar = plt.colorbar()
+        plt.colorbar()
 
 
     def cdr(self):
