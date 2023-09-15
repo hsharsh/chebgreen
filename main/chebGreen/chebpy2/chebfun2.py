@@ -211,7 +211,8 @@ class Chebfun2(ABC):
     # --------------------
     def __add__(self, g):
         if isinstance(int) or isinstance(float):
-            gcheb2 = Chebfun2(lambda x,y: float(g), domain = self.domain, prefs = self.prefs)
+            # !!! Pass by value by default? This is okay?
+            g = Chebfun2(lambda x,y: float(g), domain = self.domain, prefs = self.prefs)
         
         assert isinstance(g,Chebfun2), f"Addition/Subtraction between type {type(g) and type(self)} is not supported."
 

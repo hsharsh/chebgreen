@@ -28,7 +28,10 @@ class Quasimatrix(ABC):
         x, y = key
         
         if not self.transposed:
-            assert isinstance(y,slice) or isinstance(y,int), 'Second index needs to be a slice or an integer'
+            assert isinstance(y,slice) or isinstance(y,int) or isinstance(y,list) or isinstance(y,np.ndarray), \
+                'Second index needs to be a slice or an integer'
+
+            # !! Write checks for the shape and type of list/numpy array "y"
 
             if isinstance(x,int) or isinstance(x,float):
                 return np.array([col(x) for col in self.data[y]])
@@ -39,7 +42,10 @@ class Quasimatrix(ABC):
             else:
                 raise RuntimeError('The first index needs to be a float or a numpy array of floats')
         else:
-            assert isinstance(x,slice) or isinstance(x, int), 'First index needs to be a slice or an integer'
+            assert isinstance(x,slice) or isinstance(x, int) or isinstance(x,list) or isinstance(x,np.ndarray), \
+                'First index needs to be a slice or an integer'
+
+            # !! Write checks for the shape and type of list/numpy array "x"
 
             if isinstance(y,int) or isinstance(y,float):
                 return np.array([row(y) for row in self.data[x]])
@@ -243,6 +249,7 @@ class Quasimatrix(ABC):
         Q = Q @ D
         R = np.linalg.inv(D) @ R
 
+        # Convert to Coefficient form to truncate the unnecessary
         Qcoeffs = np.hstack([chebpy.core.algorithms.vals2coeffs2(Q[:,i]).reshape(-1,1) for i in range(Q.shape[1])])
         Qcoeffs = Qcoeffs[:,:(int(N/2) + 1)]
 
