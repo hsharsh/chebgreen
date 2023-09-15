@@ -2,6 +2,7 @@ from . import chebpy
 import numpy as np
 from abc import ABC, abstractmethod, abstractclassmethod
 from .utils import chebpts, abstractQR
+from .chebpy.core.plotting import import_plt
 
 class Quasimatrix(ABC):
     """Create a Quasimatrix in order to implement most functionality for the chebfun2 constructor"""
@@ -299,17 +300,32 @@ class Quasimatrix(ABC):
             return np.array([row.coeffs for row in self.data])
         else:
             return np.array([col.coeffs for col in self.data]).T
+        
     ###  Utilities
-    def plot(self, ax=None, **kwds):
+    def plot(self, fig = None, ax = None, **kwds):
         if isinstance(self.data,chebpy.core.chebfun.Chebfun):
-            self.data.plot(ax = None, **kwds)
+            self.data.plot(**kwds)
         else:
+            plt = import_plt()
+            if plt:
+                plt.ion()
+                if fig is None:
+                    fig = plt.figure(figsize = kwds.pop("figsize",None))
+                if ax is None:
+                    ax = plt.gca()
             for i in range(len(self.data)):
-                self.data[i].plot(ax = None, **kwds)
+                self.data[i].plot(fig = fig, ax = ax, **kwds)
     
-    def plotcoeffs(self, ax=None, **kwds):
+    def plotcoeffs(self, fig = None, ax = None, **kwds):
         if isinstance(self.data,chebpy.core.chebfun.Chebfun):
-            self.data.plotcoeffs(ax = None, **kwds)
+            self.data.plotcoeffs(**kwds)
         else:
+            plt = import_plt()
+            if plt:
+                plt.ion()
+                if fig is None:
+                    fig = plt.figure(figsize = kwds.pop("figsize",None))
+                if ax is None:
+                    ax = plt.gca()
             for i in range(len(self.data)):
-                self.data[i].plotcoeffs(ax = None, **kwds)
+                self.data[i].plotcoeffs(fig = fig, ax = ax, **kwds)

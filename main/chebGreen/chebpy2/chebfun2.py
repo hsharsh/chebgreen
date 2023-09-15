@@ -3,7 +3,7 @@ import numpy as np
 from abc import ABC
 from .preferences import Chebpy2Preferences
 from .quasimatrix import Quasimatrix
-import matplotlib.pyplot as plt
+from .chebpy.core.plotting import import_plt
 from copy import deepcopy
 
 class Chebfun2(ABC):
@@ -298,16 +298,22 @@ class Chebfun2(ABC):
         
         raise NotImplementedError('Cannot evaluate chebfun2 object with given inputs')
     
-    def plot(self):
+    def plot(self, fig = None, ax = None, **kwds):
+        plt = import_plt()
+        if plt:
+            plt.ion()
+            if fig is None:
+                fig = plt.figure(figsize = kwds.pop("figsize",None))
+            if ax is None:
+                ax = plt.gca()
+
         xx = np.linspace(0,1,2000)
         yy = np.linspace(0,1,2000)
         x, y = np.meshgrid(xx,yy)
-        plt.figure()
-
         G = self[x,y]
         levels = np.linspace(np.min(G), np.max(G), 50)
-        plt.contourf(x,y,G, 50, cmap = 'turbo', vmin = np.min(G), vmax = np.max(G), levels = levels)
-        plt.colorbar()
+        cf = ax.contourf(x,y,G, 50, cmap = 'turbo', vmin = np.min(G), vmax = np.max(G), levels = levels)
+        fig.colorbar(cf)
 
 
     def cdr(self):

@@ -11,9 +11,7 @@ def import_plt():
     """
     return import_optional("matplotlib.pyplot", "MPL")
 
-
-def plotfun(fun, support, ax=None, N=None, **kwds):
-    ax = ax or import_plt().gca()
+def plotfun(fun, fig, ax, support, N=None, **kwds):
     N = N if N is not None else prefs.N_plot
     xx = np.linspace(*support, N)
     ff = fun(xx)
@@ -25,9 +23,7 @@ def plotfun(fun, support, ax=None, N=None, **kwds):
         ax.plot(xx, ff, **kwds)
     return ax
 
-
-def plotfuncoeffs(abscoeffs, ax=None, **kwds):
-    ax = ax or import_plt().gca()
+def plotfuncoeffs(abscoeffs, fig, ax, **kwds):
     ax.set_ylabel(kwds.pop("xlabel", "coefficient magnitude"))
     ax.set_xlabel(kwds.pop("ylabel", "polynomial degree"))
     ax.semilogy(abscoeffs, ".", **kwds)

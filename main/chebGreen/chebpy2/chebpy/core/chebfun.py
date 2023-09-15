@@ -7,8 +7,7 @@ from .settings import _preferences as prefs
 from .utilities import Domain, check_funs, generate_funs, compute_breakdata
 from .decorators import self_empty, float_argument, cast_arg_to_chebfun, cache
 from .exceptions import BadFunLengthArgument
-from .plotting import import_plt, plotfun
-
+from .plotting import plotfun, import_plt
 
 class Chebfun:
     def __init__(self, funs, prefs = prefs):
@@ -403,14 +402,22 @@ class Chebfun:
 
 plt = import_plt()
 if plt:
+    plt.ion()
 
-    def plot(self, ax=None, **kwds):
-        return plotfun(self, self.support, ax=ax, **kwds)
+    def plot(self, fig = None, ax = None, **kwds):
+        if fig is None:
+            fig = plt.figure(figsize = kwds.pop("figsize",None))
+        if ax is None:
+            ax = plt.gca()
+        return plotfun(self, fig = fig, ax = ax, support = self.support, **kwds)
 
     setattr(Chebfun, "plot", plot)
 
-    def plotcoeffs(self, ax=None, **kwds):
-        ax = ax or plt.gca()
+    def plotcoeffs(self, fig = None, ax = None, **kwds):
+        if fig is None:
+            fig = plt.figure(figsize = kwds.pop("figsize",None))
+        if ax is None:
+            ax = plt.gca()
         for fun in self:
             fun.plotcoeffs(ax=ax, **kwds)
         return ax

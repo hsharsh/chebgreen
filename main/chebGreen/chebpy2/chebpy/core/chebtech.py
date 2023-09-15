@@ -19,7 +19,7 @@ from .algorithms import (
     standard_chop,
 )
 
-from .plotting import import_plt, plotfun, plotfuncoeffs
+from .plotting import plotfun, plotfuncoeffs, import_plt
 from .utilities import Interval, coerce_list
 
 
@@ -422,16 +422,25 @@ class Chebtech(Smoothfun, ABC):
 # ----------
 
 plt = import_plt()
-if plt:
 
-    def plot(self, ax=None, **kwargs):
-        return plotfun(self, (-1, 1), ax=ax, **kwargs)
+if plt:
+    plt.ion()
+
+    def plot(self, fig = None, ax = None, **kwds):
+        if fig is None:
+            fig = plt.figure(figsize = kwds.pop("figsize",None))
+        if ax is None:
+            ax = plt.gca()
+        return plotfun(self, fig = fig, ax = ax, support = (-1,1), **kwds)
 
     setattr(Chebtech, "plot", plot)
 
-    def plotcoeffs(self, ax=None, **kwargs):
-        ax = ax or plt.gca()
-        return plotfuncoeffs(abs(self.coeffs), ax=ax, **kwargs)
+    def plotcoeffs(self, fig = None, ax = None, **kwds):
+        if fig is None:
+            fig = plt.figure(figsize = kwds.pop("figsize",None))
+        if ax is None:
+            ax = plt.gca()
+        return plotfuncoeffs(abs(self.coeffs), ax=ax, **kwds)
 
     setattr(Chebtech, "plotcoeffs", plotcoeffs)
 
