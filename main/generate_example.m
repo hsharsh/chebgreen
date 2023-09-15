@@ -30,7 +30,7 @@ function generate_example(example_name, theta, varargin)
     disp(['Length scale: ',num2str(lambda)]);
     disp(['Nf: ',num2str(Nf)]);
     disp(['Nu: ',num2str(Nu)]);
-    disp(['Noise: ',num2str(noise*100),'%']);
+    disp(['Noise: ',num2str(noise_level*100),'%']);
     disp('---------------------------------------');
 
     diff_op = output_example{1};

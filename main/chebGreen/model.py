@@ -82,7 +82,7 @@ class ChebGreen(ABC):
                 model.saveModels(f"savedModels/{example}/{theta:.2f}")
             
             print(f"Learning a chebfun2 model for example \'{example}\' at Theta = {theta:.2f}")
-            self.G[theta] = (Chebfun2(model.evaluateG, domain = [0, 1, 0, 1], prefs = Chebpy2Preferences(), simplify = False))
+            self.G[float(theta)] = (Chebfun2(model.evaluateG, domain = [0, 1, 0, 1], prefs = Chebpy2Preferences(), simplify = True))
             print(f"Chebfun2 model added for example \'{example}\' at Theta = {theta:.2f}\n")
         
         maxRank = np.min(np.array([self.G[theta].rank for theta in self.Theta]))

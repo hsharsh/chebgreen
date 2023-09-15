@@ -300,14 +300,42 @@ class Quasimatrix(ABC):
         # Tranpose of a quasimatrix
         return Quasimatrix(data = self.data, transposed = not self.transposed)
 
-    def coeffrepr(self):
+    def coeffrepr(self, N = None):
         if len(self.data) == 0:
             raise RuntimeError('Cannot construct a coefficient representation for an empty quasimatrix')
+        F = self
         if self.transposed:
-            return np.array([row.coeffs for row in self.data])
+            m = F.shape[0]
+            if N is None:
+                N = np.max([row.funs[0].size for row in self.data])
+            Fvalues = np.zeros((m,N))
+            
+            prolongtemp = np.zeros(N)
+            for i in range(m):
+                f = F.data[i].funs[0]
+                prolongtemp[:len(f.coeffs)] = f.coeffs
+                Fvalues[i,:len(prolongtemp)] = prolongtemp
+            return Fvalues
         else:
-            return np.array([col.coeffs for col in self.data]).T
-        
+            n = F.shape[1]
+            if N is None:
+                N = np.max([col.funs[0].size for col in self.data])
+            Fvalues = np.zeros((N,n))
+            
+            prolongtemp = np.zeros(N)
+            for j in range(n):
+                f = F.data[j].funs[0]
+                prolongtemp[:len(f.coeffs)] = f.coeffs
+                Fvalues[:len(prolongtemp),j] = prolongtemp
+            return Fvalues
+        # if len(self.data) == 0:
+        #     raise RuntimeError('Cannot construct a coefficient representation for an empty quasimatrix')
+        # if self.transposed:
+        #     return np.array([row.coeffs for row in self.data])
+        # else:
+        #     return np.array([col.coeffs for col in self.data]).T
+
+
     ###  Utilities
     def plot(self, fig = None, ax = None, **kwds):
         if isinstance(self.data,chebpy.core.chebfun.Chebfun):
