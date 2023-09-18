@@ -1,6 +1,7 @@
 from .greenlearning.utils import DataProcessor
 from .greenlearning.model import GreenNN
 from .chebpy2 import Chebfun2, Chebpy2Preferences, Quasimatrix
+from .chebpy2.chebpy import chebfun
 from .backend import os, sys, Path, np, ABC, MATLABPath
 
 class ChebGreen(ABC):
@@ -46,12 +47,13 @@ class ChebGreen(ABC):
         print("-------------------------------------------------------------------------------\n")
         print("Generating chebfun2 models:")
         self.generateChebfun2Models(example)
+        self.interpG = {}
 
 
     def generateMatlabData(self, script, example):
         for theta in self.Theta:
             if Path(f"datasets/{example}/{theta:.2f}.mat").is_file():
-                print(f"Dataset for for Theta = {theta:.2f}. Skipping dataset generation.")
+                print(f"Dataset found for Theta = {theta:.2f}. Skipping dataset generation.")
                 continue
             examplematlab = "\'"+example+"\'"
             matlabcmd = f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \"{script}({examplematlab},{theta:.2f}); exit;\" | tail -n +11"
@@ -91,39 +93,165 @@ class ChebGreen(ABC):
             self.G[theta].truncate(maxRank)
 
     def generateNewModel(self, theta):
-        pass
+        if theta not in list(self.interpG.keys()):
+            self.interpG[theta] = modelInterp(self.G, theta)
+        return self.interpG[theta]
 
-def compute_interp_coeffs(models : np.array, targetParam: np.array) -> np.array:
+def computeInterpCoeffs(interpParams : list, targetParam: float) -> np.array:
     """Computes the interpolation coefficients (based on fitting Lagrange polynomials) for performing interpolation,
     when the parameteric space is 1D. Note that the function takes in parameters of any dimnesions
 
     --------------------------------------------------------------------------------------------------------------------
     Arguments:
-        models: Set of models (EGF objects) which are used to generate an interoplated model at the parameter
-            targetParam.
-        targetParam: An array of size (n_{param_dimension} x 1) array which defines the parameters for the model which
-            we want to interpolate.
+        interpSet: Dictionary of models (Chebfun2 objects) which are used to generate an interoplated model at the
+            parameter targetParam.
+        targetParam: A float which defines the parameter at which we want to find a new model.
 
     --------------------------------------------------------------------------------------------------------------------
     Returns:
-        A numpy array of Interpolation coefficents index in the same way as in the set models.
+        A dict of Interpolation coefficents index
     """
-    assert(not models == True)
+    
+    assert len(interpParams) > 2, "Need at least two interpolant models"
+    assert all([isinstance(theta,float) for theta in interpParams]), \
+        "Lagrange Polynomial based interpolation requires the parameteric space to be 1D."
 
-    if (models[0].params.shape[0]!= 1):
-        raise RuntimeError("Lagrange Polynomial based interpolation requires the parameteric space to be 1D.")
+    interpCoeffs = dict([(theta, 1.0) for theta in interpParams])
 
+    for i,t1 in enumerate(interpCoeffs):
+        for j,t2 in enumerate(interpCoeffs):
+            if i != j:
+                interpCoeffs[t1] = interpCoeffs[t1]*((targetParam - t2)/(t1 - t2))
 
-    a = np.ones(len(models))
-    if len(models[0].params) == 1:
-        thetas = [model.params[0] for model in models]
-        theta = targetParam[0] # Define the target parameter
-        for i,t1 in enumerate(thetas):
-            for j,t2 in enumerate(thetas):
-                if i != j:
-                    a[i] = a[i]*((theta - t2)/(t1 - t2))
+    return interpCoeffs
 
-    return a
+def computeOrderSigns(R0: Quasimatrix, R1: Quasimatrix) -> tuple([np.array, np.array]):
+    """ Given two orthonormal matrices R0 and R1, this function computes the "correct" ordering and signs of the columns
+    (modes) of R1 using R0 as a reference. The assumption is that these are orthonormal matrices, the columns of which
+    are eigenmodes of systems which are close to each other and hence the eigenmodes will close to each other as well.
+    We thus find an order such that the modes of the second matrix have the maximum inner product (in magnitude) with
+    the corresponding mode from the first matrix. If such an ordering doesn't exist the function raises a runtime error.
+
+    Once such an ordering is found, one can flip the signs for the modes of R1, if the inner product is not positive.
+    This is necessary when we want to interpolate.
+
+    --------------------------------------------------------------------------------------------------------------------
+    Args:
+        R0: Orthonormal quasimatrix, the columns of which are used as the reference to re-order and find signs
+        R1: Orthonormal quasimatrix for which the columns are supposed to be reordered.
+
+    --------------------------------------------------------------------------------------------------------------------
+    Returns:
+        New ordering and the signs (sign flips) for matrix R1.
+    """
+    rank = R0.shape[1]
+    order = -1*np.ones(rank).astype(int)
+    signs = np.ones(rank)
+    
+    used = set()
+    # For each mode in R1, Search over all modes of R0 for the best matching mode.
+    products = np.abs(R0.T * R1) # Compute all the pairwise innerproducts
+    for i in range(rank):
+        maxidx, maxval = -1, -1
+        for j in range(rank):
+            current = products[i,j]
+            if current >= maxval and (j not in used):
+                maxidx = j
+                maxval = current
+        order[i] = maxidx
+        used.add(maxidx)
+    
+    # Raise an error if the ordering of modes is not a permutation.
+    check = set()
+    for i in range(rank):
+        check.add(order[i])
+
+    if len(check) != rank:
+        raise RuntimeError('No valid ordering of modes found')
+    
+    # Signs are determined according to the correct ordering of modes
+    for i in range(rank):
+        if (R0[:,i].T * R1[:,int(order[i])]).item() < 0:
+            signs[i] = -1
+    
+    return order, signs
+
+def modelInterp(interpSet: dict[float,Chebfun2], targetParam: float) -> Chebfun2:
+    """
+    Interpolation for the models. The left and right singular functions are interpolated in the tangent space of
+    (L^2(domain))^K (K is the model rank) using a QR based retraction map. The singular values are interpolated
+    directly (entry-by-entry) using a Lagrange polynomial based inteporlation. Note that currently the interpolation
+    only supports 1D parameteric spaces for the model as the method for interpolation within the tangent space only
+    supports 1D parameteric spaces but this can be easily extended to higher dimensions. The lifting and retraction to
+    the tangent space at an "origin" has no dependendence on the dimensionality of the parameteric space.
+
+    --------------------------------------------------------------------------------------------------------------------
+    Arguments:
+        interpSet: Dictionary of models (Chebfun2 objects) which are used to generate an interoplated model at the
+            parameter targetParam.
+        targetParam: A float which defines the parameter at which we want to find a new model.
+
+    --------------------------------------------------------------------------------------------------------------------
+    Returns:
+        An Chebfun2 object at the target parameter.
+    """
+    interpParams = list(interpSet.keys())
+
+    assert len(interpParams) > 2, "Need at least two interpolant models"
+
+    # Find the model which is closest to target parameter. Note that the distance is calculated in terms of norm of the
+    # normalized parameters.
+    refIndex = None
+    minDistance = np.inf
+    for theta in interpParams:
+        distance = np.linalg.norm((theta-targetParam)/targetParam)
+        if distance < minDistance:
+            minDistance = distance
+            refIndex = theta
+    
+    interpCoeffs = computeInterpCoeffs(interpParams, targetParam)
+    
+    # Define the origin
+    U0, _, Vt0 = interpSet[refIndex].cdr()
+    V0 = Vt0.T
+    K = interpSet[refIndex].rank
+    
+    U_ = Quasimatrix(data = chebfun(np.zeros((2,K)), domain = interpSet[refIndex].domain[2:]), transposed = False)
+    S_ = np.zeros(K)
+    V_ = Quasimatrix(data = chebfun(np.zeros((2,K)), domain = interpSet[refIndex].domain[:2]), transposed = False)
+    
+    for theta, model in interpSet.items():
+        U, S, Vt = model.cdr()
+        order, signs = computeOrderSigns(U0,U)
+        
+        Uc = U[:,order] * np.diag(signs)
+        S = np.diag(S)[order]
+        Vc = (Vt.T)[:,order] * np.diag(signs)
+        
+        # Project to tangent space of model at origin
+        Up = Uc - U0 * ((U0.T * Uc + Uc.T * U0)*0.5)
+        Vp = Vc - V0 * ((V0.T * Vc + Vc.T * V0)*0.5)
+        
+        
+        # Interpolate the singular functions
+        U_ += Up * np.diag(np.ones(K)*interpCoeffs[theta])
+        V_ += Vp * np.diag(np.ones(K)*interpCoeffs[theta])
+        
+        # Interpolate the singular values directly
+        S_ += S * interpCoeffs[theta]
+        
+        
+    Un, _ = (U0 + U_).qr()
+    Vn, _ = (V0 + V_).qr()
+    
+    # Match the order and signs with the origin
+    order, signs = computeOrderSigns(U0,Uc)
+    Un = Un[:,order] * np.diag(signs)
+    Sn = S_[order]
+    Vtn = (Vn[:,order] * np.diag(signs)).T
+    
+    
+    return Chebfun2([Un, Sn, Vtn])
 
 
 
