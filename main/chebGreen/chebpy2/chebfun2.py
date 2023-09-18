@@ -352,6 +352,24 @@ class Chebfun2(ABC):
         return len(self.pivotValues)
 
     @property
+    def max(self):
+        m, n = len(self.rows), len(self.cols)
+        # Minmum samples = 9, Maximum samples = 2000
+        m, n = max(min(m,9),2000), max(min(n,9),2000)
+        prefx, prefy = self.prefs.prefx, self.prefs.prefy
+        x, y = points2D(m, n, self.domain, prefx, prefy)
+        return np.max(self[x,y])
+    
+    @property
+    def min(self):
+        m, n = len(self.rows), len(self.cols)
+        # Minmum samples = 9, Maximum samples = 2000
+        m, n = max(min(m,9),2000), max(min(n,9),2000)
+        prefx, prefy = self.prefs.prefx, self.prefs.prefy
+        x, y = points2D(m, n, self.domain, prefx, prefy)
+        return np.min(self[x,y])
+    
+    @property
     def vscale(self):
         m, n = len(self.rows), len(self.cols)
         # Minmum samples = 9, Maximum samples = 2000
