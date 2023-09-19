@@ -10,7 +10,7 @@ class Chebfun2(ABC):
     def __init__(self, g, domain = None, prefs = Chebpy2Preferences(), simplify = False, vectorize = False):
         
         # Default domain is [-1,1] x [-1, 1]
-        if domain == None:
+        if domain is None:
             self.domain = prefs.domain
         elif type(domain) is not np.ndarray:
             self.domain = np.array(domain)
@@ -25,10 +25,10 @@ class Chebfun2(ABC):
                 "Input format should be [Quasimatrix, Numpy array, Quasimatrix]"
             check = (g[0].shape[1] == g[1].shape[0] and g[2].shape[0] == g[1].shape[0])
             if check:
-                assert check and (np.linalg.matrix_rank(np.diag(g[1])) == g[1].shape[0]), \
-                    " ".join("Chebfun2 takes the input [C D R] such the bivariate function it represents is \
-                        f = C * diag(D) * R, where u is a column quasimatrix, and diag(D) is a full \
-                            rank diagonal matrix, and vt is a row quasimatrix.".split())
+                assert check and not np.count_nonzero(g[1] == 0), \
+                    " ".join("Chebfun2 takes the input [C D R] such the bivariate function it \
+                             represents is \ f = C * diag(D) * R, where u is a column quasimatrix, \
+                             D has no zeros, and vt is a row quasimatrix.".split())
 
             self.cols, self.pivotValues, self.rows = g[0], 1/g[1], g[2]
             self.domain = np.hstack([self.rows.domain,self.cols.domain])
@@ -210,9 +210,8 @@ class Chebfun2(ABC):
     #  operator overloads
     # --------------------
     def __add__(self, g):
-        if isinstance(int) or isinstance(float):
-            # !!! Pass by value by default? This is okay?
-            g = Chebfun2(lambda x,y: float(g), domain = self.domain, prefs = self.prefs)
+        if isinstance(g, int) or isinstance(g, float):
+            g = Chebfun2(lambda x,y: float(g)*np.ones(x.shape), domain = self.domain, prefs = self.prefs)
         
         assert isinstance(g,Chebfun2), f"Addition/Subtraction between type {type(g) and type(self)} is not supported."
 
@@ -232,8 +231,33 @@ class Chebfun2(ABC):
         # Ensure that g has smaller pivot values.
         if np.min(np.abs(f.pivotValues)) < np.min(np.abs(g.pivotValues)):
             f,g = g,f
+        
+        fScl = np.diag(1/f.pivotValues)
+        gScl = np.diag(1/g.pivotValues)
 
-        raise NotImplementedError
+        cols = Quasimatrix(np.hstack([f.cols.data, g.cols.data]), transposed = False)
+        rows = Quasimatrix(np.hstack([f.rows.data, g.rows.data]), transposed = False)
+
+        Z = np.zeros((len(fScl)+len(gScl), len(fScl)+len(gScl)))
+        Z[:len(fScl),:len(fScl)] = fScl
+        Z[-len(gScl):,-len(gScl):] = gScl
+
+        Qcols, Rcols = cols.qr()
+        Qrows, Rrows = rows.qr()
+
+        U, S, Vt = np.linalg.svd(Rcols @ Z @ Rrows.T)
+
+        Qcols = Qcols * U
+        Qrows = Qrows * Vt
+        
+        # !!!! Check if this is okay
+        # Compress the format if possible.
+        idx = np.linalg.matrix_rank(np.diag((S)))
+        Qcols = Qcols[:,:idx]
+        Qrows = Qrows[:,:idx]
+        S = S[:idx]
+
+        return Chebfun2([Qcols, S, Qrows.T])
 
     def __sub__(self, g):
         return self + (-g)
@@ -312,8 +336,7 @@ class Chebfun2(ABC):
         yy = np.linspace(0,1,2000)
         x, y = np.meshgrid(xx,yy)
         G = self[x,y]
-        levels = np.linspace(np.min(G), np.max(G), 50)
-        cf = ax.contourf(x,y,G, 50, cmap = 'turbo', vmin = np.min(G), vmax = np.max(G), levels = levels)
+        cf = ax.contourf(x,y,G, 50, cmap = 'turbo', vmin = np.min(G), vmax = np.max(G))
         fig.colorbar(cf)
 
 
@@ -377,6 +400,11 @@ class Chebfun2(ABC):
         prefx, prefy = self.prefs.prefx, self.prefs.prefy
         x, y = points2D(m, n, self.domain, prefx, prefy)
         return np.max(np.abs(self[x,y]))
+    
+    @property
+    def norm(self): # sqrt(integral of abs(F)^2)
+        _, s, _ = self.svd()
+        return np.sqrt(np.sum(s))
 
 def Max(A):
     return np.max(A), np.argmax(A)

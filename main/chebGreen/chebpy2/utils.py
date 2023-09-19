@@ -100,7 +100,7 @@ def abstractQR(qMat, E, InnerProduct, Norm, tol = chebpy.core.settings.DefaultPr
         if aex < tol*scl:
             s = 1
         else:
-            s = np.sign(ex/aex)
+            s = -np.sign(ex/aex)
         E[:,k] = E[:,k] * s
         
         # Compute the norm of the kth column of A:
