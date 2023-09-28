@@ -1,16 +1,16 @@
-function output_example = airy_equation(K)
-% Advection-diffusion equation
+function output_example = airy_equation(theta)
+% Parameterized airy equation
 
 % Define the domain.
 dom = [0,1];
 
 % Parameter of the equation
 if nargin < 1
-    K = 10
+    theta = 10
 end
 
 % Differential operator
-N = chebop(@(x,u) diff(u,2)-K^2*x*u, dom);
+N = chebop(@(x,u) diff(u,2)-theta^2*x*u, dom);
 
 % Boundary conditions
 N.bc = @(x,u) [u(dom(1)); u(dom(2))];

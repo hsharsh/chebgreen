@@ -36,11 +36,10 @@ def get_activation(identifier):
     """Return the activation function."""
     if isinstance(identifier, str):
         return {
-                'elu': torch.nn.functional.elu,
-                'relu': torch.nn.functional.relu,
-                'selu': torch.nn.functional.selu,
-                'sigmoid': torch.nn.functional.sigmoid,
-                'sin': torch.sin,
-                'tanh': torch.nn.functional.tanh,
+                'elu': torch.nn.ELU(),
+                'relu': torch.nn.ReLU(),
+                'selu': torch.nn.SELU(),
+                'sigmoid': torch.nn.Sigmoid(),
+                'tanh': torch.nn.Tanh(),
                 'rational': Rational(),
                 }[identifier]

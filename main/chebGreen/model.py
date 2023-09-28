@@ -3,13 +3,16 @@ from .greenlearning.model import GreenNN
 from .chebpy2 import Chebfun2, Chebpy2Preferences, Quasimatrix
 from .chebpy2.chebpy import chebfun
 from .backend import os, sys, Path, np, ABC, MATLABPath
+from .utils import generateMatlabData
 
 class ChebGreen(ABC):
     def __init__(self,
                 Theta           : np.array,
+                domain          : list = [0, 1, 0, 1],
                 generateData    : bool = True,
                 script          : str = "generate_example",
                 example         : str = None,
+                homogenousBC    : bool = True,
                 datapath        : str = None
                 ):
         super().__init__()
@@ -32,11 +35,18 @@ class ChebGreen(ABC):
         """
         
         self.Theta = Theta
+
+        if type(domain) is not np.ndarray and type(domain) is list:
+            self.domain = np.array(domain)
+        else:
+            self.domain = domain
         
+        self.homogenousBC = homogenousBC
+
         # Set data path for the model:
         if generateData: 
             print(f"Generating dataset for example \'{example}\'")
-            self.datapath = self.generateMatlabData(script, example)
+            self.datapath = generateMatlabData(script, example, self.Theta)
         else:
             print(f"Loading dataset at {datapath}")
             assert datapath is not None, "No datapath specified!"
@@ -49,22 +59,6 @@ class ChebGreen(ABC):
         self.generateChebfun2Models(example)
         self.interpG = {}
 
-
-    def generateMatlabData(self, script, example):
-        for theta in self.Theta:
-            if Path(f"datasets/{example}/{theta:.2f}.mat").is_file():
-                print(f"Dataset found for Theta = {theta:.2f}. Skipping dataset generation.")
-                continue
-            examplematlab = "\'"+example+"\'"
-            matlabcmd = f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \"{script}({examplematlab},{theta:.2f}); exit;\" | tail -n +11"
-            with open("temp.sh", 'w') as f:
-                f.write(matlabcmd)
-                f.close()
-            os.system(f"bash temp.sh")
-            os.remove("temp.sh")
-        return os.path.abspath(f"datasets/{example}")
-    
-
     def generateChebfun2Models(self, example):
         model = GreenNN()
         self.G = {}
@@ -74,17 +68,17 @@ class ChebGreen(ABC):
             
             if model.checkSavedModels(loadPath = GreenNNPath):          # Check for stored models
                 print(f"Found saved model, Loading model for example \'{example}\' at Theta = {theta:.2f}")
-                model.build(dimension = 1, loadPath = GreenNNPath)
+                model.build(dimension = 1, homogeneousBC = self.homogenousBC, loadPath = GreenNNPath)
             else:
                 data = DataProcessor(self.datapath + f"/{theta:.2f}.mat")
                 data.generateDataset(trainRatio = 0.95)
-                model.build(dimension = 1, layerConfig = [50,50,50,50], activation = 'rational')
+                model.build(dimension = 1, domain = self.domain, layerConfig = [50,50,50,50], activation = 'rational', homogeneousBC = self.homogenousBC,)
                 print(f"Training greenlearning model for example \'{example}\' at Theta = {theta:.2f}")
                 lossHistory = model.train(data, epochs = {'adam':int(5000), 'lbfgs':int(0)})
                 model.saveModels(f"savedModels/{example}/{theta:.2f}")
             
             print(f"Learning a chebfun2 model for example \'{example}\' at Theta = {theta:.2f}")
-            self.G[float(theta)] = (Chebfun2(model.evaluateG, domain = [0, 1, 0, 1], prefs = Chebpy2Preferences(), simplify = True))
+            self.G[float(theta)] = (Chebfun2(model.evaluateG, domain = self.domain, prefs = Chebpy2Preferences(), simplify = True))
             print(f"Chebfun2 model added for example \'{example}\' at Theta = {theta:.2f}\n")
         
         maxRank = np.min(np.array([self.G[theta].rank for theta in self.Theta]))

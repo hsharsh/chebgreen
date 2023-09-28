@@ -56,12 +56,16 @@ class GreenNN(ABC):
     def __init__(self) -> None:
         super().__init__()
 
-    def build(self, dimension = 1, domain = np.array([0,1,0,1]), layerConfig = [50, 50, 50, 50], activation = 'rational', loadPath = None, device = device):
+    def build(self, dimension = 1, domain = np.array([0,1,0,1]), layerConfig = [50, 50, 50, 50], activation = 'rational', homogeneousBC = True, loadPath = None, device = device):
         self.dimension = dimension
-        self.domain = domain
+        if type(domain) is not np.ndarray and type(domain) is list:
+            self.domain = np.array(domain)
+        else:
+            self.domain = domain
         self.device = device
         self.layerConfig = layerConfig
         self.activation = activation
+        self.addADF = homogeneousBC
 
         if loadPath == None:
             self.G = NN(numInputs = dimension*2, numOutputs = dimension, layerConfig = layerConfig, activation = activation).to(self.device)
@@ -152,14 +156,29 @@ class GreenNN(ABC):
         if x.dtype == config(np):
             X = torch.tensor(np.vstack([x.ravel(), s.ravel()]).T, dtype = config(torch)).to(self.device)
         with torch.no_grad():
-            G = (approximateDistanceFunction(X[:,0], X[:,1],
+            if self.addADF:
+                G = (approximateDistanceFunction(X[:,0], X[:,1],
                                              self.domain.astype(config(np)),
                                              self.device).reshape((-1,1))*self.G(X)).cpu().numpy().reshape(shape)
+            else:
+                G = self.G(X).cpu().numpy().reshape(shape)
         return G 
+
+    # Not implemented for Green's function of dimension > 1
+    def evaluateN(self, x):
+        if isinstance(x,config(np)):
+            x = np.array([x])
+        if isinstance(x.dtype, np.float64):
+            x = x.astype(config(np))
+        if x.dtype == config(np):
+            X = torch.tensor(x.reshape(-1,1), dtype = config(torch)).to(self.device)
+        with torch.no_grad():
+            N = self.N(X).cpu().numpy()
+        return N 
 
 
     def init_loss(self, xF, xU):
-        self.lossfn = LossGreensFunction(self.G, self.N, xF, xU, self.domain, self.device)
+        self.lossfn = LossGreensFunction(self.G, self.N, xF, xU, self.domain, self.addADF ,self.device)
     
     def saveModels(self, path = "temp"):
         savedict = {'dimension': self.dimension,

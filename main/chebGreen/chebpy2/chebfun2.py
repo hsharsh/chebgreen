@@ -365,6 +365,10 @@ class Chebfun2(ABC):
     def truncate(self, K):
         self.cols, self.pivotValues, self.rows = self.cols[:,:K], self.pivotValues[:K], self.rows[:K,:]
     
+    def norm(self): # sqrt(integral of abs(F)^2)
+        _, s, _ = self.svd()
+        return np.sqrt(np.sum(s))
+    
     @property
     def cornervalues(self):
         xx, yy = np.meshgrid(self.domain[:2], self.domain[2:])  
@@ -400,11 +404,6 @@ class Chebfun2(ABC):
         prefx, prefy = self.prefs.prefx, self.prefs.prefy
         x, y = points2D(m, n, self.domain, prefx, prefy)
         return np.max(np.abs(self[x,y]))
-    
-    @property
-    def norm(self): # sqrt(integral of abs(F)^2)
-        _, s, _ = self.svd()
-        return np.sqrt(np.sum(s))
 
 def Max(A):
     return np.max(A), np.argmax(A)

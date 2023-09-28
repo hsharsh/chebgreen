@@ -348,8 +348,9 @@ class Quasimatrix(ABC):
                     fig = plt.figure(figsize = kwds.pop("figsize",None))
                 if ax is None:
                     ax = plt.gca()
+            cmap = plt.get_cmap("viridis", len(self.data))
             for i in range(len(self.data)):
-                self.data[i].plot(fig = fig, ax = ax, **kwds)
+                self.data[i].plot(fig = fig, ax = ax, color = cmap(i), **kwds)
     
     def plotcoeffs(self, fig = None, ax = None, **kwds):
         if isinstance(self.data,chebpy.core.chebfun.Chebfun):

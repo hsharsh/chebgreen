@@ -1,5 +1,5 @@
 import numpy as np
-import os,sys,glob, platform
+import os,sys,glob,platform
 from abc import ABC
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -32,4 +32,6 @@ elif operatingSystem == "Linux":
         MATLABPath = pathList[0]
     else:
         raise('Matlab not found')
+else:
+    raise('Operating system not supported. Please set MATLABPath manually.')
     

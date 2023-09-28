@@ -1,30 +1,6 @@
-% This code generates the datasets for the examples written in the folder
-% "examples".
-% To generate the dataset corresponding to the file helmholtz.m,
-% run the command
-% generate_gl_example('helmholtz',theta);
-
-function generate_example(example_name, theta, varargin)
+function generate_fractional(example_name, Nsample, lambda, Nf, Nu, noise_level, theta, varargin)
     % Add warning about Chebfun
     assert(exist('chebfun') == 2,"This code requires the Chebfun package. See http://www.chebfun.org/download/ for installation details.")
-
-    Nsample     = 200;  % Number of sampled pairs f/u
-    lambda      = 0.01; % Lengthscale of kernel for sampling f
-    Nf          = 250;  % Discretization for f, lambda > 1/Nf 
-    Nu          = 100;  % Discretization for u
-    noise_level = 0;    % Noise level of the solutions u
-
-    % Add examples to the MATLAB path
-    addpath('examples')
-
-    % Load the differential operator example
-    if nargin > 1
-        disp(['### Example = ', example_name, ' @ theta = ',num2str(theta), ' ###'])
-        output_example = feval(example_name, theta);
-    else
-        disp(['### Example = ', example_name, ' ###'])
-        output_example = feval(example_name);
-    end
 
     disp(['Number of samples: ',num2str(Nsample)]);
     disp(['Length scale: ',num2str(lambda)]);
@@ -33,38 +9,10 @@ function generate_example(example_name, theta, varargin)
     disp(['Noise: ',num2str(noise_level*100),'%']);
     disp('---------------------------------------');
 
-    diff_op = output_example{1};
-    dom = diff_op.domain;
+    dom = [-1,1];
     
-    i = 2;
-    linear = true;
-    while i <= length(output_example)
-        % Get covariance kernel frequency
-        if strcmp(output_example{i},"lambda") && i< length(output_example)
-            lambda = output_example{i+1};
-            i = i+1;
-        % Get exact Green's function
-        elseif strcmp(output_example{i},"ExactGreen") && i< length(output_example)
-            ExactGreen = output_example{i+1};
-            i = i+1;
-        % Don't rescale if nonlinear operator
-        elseif strcmp(output_example{i},"nonlinear")
-            linear = false;
-        end
-        i = i+1;
-    end
-    
-    % Reshape domain
-    dom = [dom(1), dom(end)];
-    
-    % Number of input-output functions
-    if linear
-        size_system = size(diff_op.linop);
-    else
-        size_system = [diff_op.nargin-1,diff_op.nargin-1];
-    end
-    n_input = size_system(2);
-    n_output = size_system(1);
+    n_input = 1;
+    n_output = 1;
 
     % Training points for f
     Y = linspace(dom(1), dom(2), Nf)';
@@ -80,11 +28,8 @@ function generate_example(example_name, theta, varargin)
     
     % Define the Gaussian process kernel
     domain_length = dom(end) - dom(1);
-    if strcmp(diff_op.bc,'periodic')
-        K = chebfun2(@(x,y)exp(-2*sin(pi*abs(x-y)/domain_length).^2/lambda^2), [dom,dom], 'trig');
-    else
-        K = chebfun2(@(x,y)exp(-(x-y).^2/(2*domain_length^2*lambda^2)), [dom,dom]);
-    end
+    K = chebfun2(@(x,y)exp(-2*sin(pi*abs(x-y)/domain_length).^2/lambda^2), [dom,dom], 'trig');
+
     % Compute the Cholesky factorization of K
     L = chol(K, 'lower');
     
@@ -102,15 +47,29 @@ function generate_example(example_name, theta, varargin)
         % Sample from a Gaussian process
         f = generate_random_fun(L);
         rhs = f;
-        for k = 2:n_input
-            % Sample from a Gaussian process
-            f = generate_random_fun(L);
-            rhs = [rhs;f];
-        end
 
         % Solve the equation
-        u = solvebvp(diff_op, rhs, options);
+        n = length(f);
+        % Ensure n is odd
+        if mod(n,2) == 0
+            n = n+1;
+        end
         
+        % Define differentiation matrix of -d^(2s)/d^2s on [-1,1]
+        Dx2 = (-1*trigspec.diffmat(n,2)).^theta;
+        % Add zero mean condition
+        Dx2(floor(n/2)+1,floor(n/2)+1) = 1;
+        
+        % Solve equation
+        fx = trigcoeffs(f, n);
+        uc = Dx2 \ fx;
+        
+        % Convert Fourier coeffs to values
+        u = trigtech.coeffs2vals(uc);
+        
+        % Make chebfun
+        u = chebfun(u, f.domain, 'trig');
+
         % Convert to chebfun
         if isa(u,'chebmatrix')
             u_col = [];
@@ -133,7 +92,23 @@ function generate_example(example_name, theta, varargin)
     end
     
     % Compute homogeneous solution
-    u_hom = solvebvp(diff_op, 0, options);
+    f = chebfun(@(x) 0*x, dom, 'trig');
+    n = length(f);
+
+    % Define differentiation matrix of -d^(2s)/d^2s on [-1,1]
+    Dx2 = (-1*trigspec.diffmat(n,2)).^theta;
+    % Add zero mean condition
+    Dx2(floor(n/2)+1,floor(n/2)+1) = 1;
+    
+    % Solve equation
+    fx = trigcoeffs(f, n);
+    uc = Dx2 \ fx;
+    
+    % Convert Fourier coeffs to values
+    u_hom = trigtech.coeffs2vals(uc);
+    
+    % Make chebfun
+    u_hom = chebfun(u_hom, f.domain, 'trig');
     
     % Convert to chebfun
     if isa(u_hom,'chebmatrix')
@@ -146,13 +121,6 @@ function generate_example(example_name, theta, varargin)
     
     U_hom = u_hom(X);
     
-    % Normalize the solution for homogeneous problems
-    if all(iszero(u_hom)) && linear
-        scale = max(abs(U),[],'all');
-        U = U/scale;
-        F = F/scale;
-    end
-    
     % Add Gaussian noise to the solution
     U = U.*(1 + noise_level*randn(size(U)));
 
@@ -163,7 +131,7 @@ function generate_example(example_name, theta, varargin)
         mkdir(savePath);
     end
 
-    if nargin > 1
+    if nargin > 6
         if exist("ExactGreen")
             save(sprintf('%s/%s.mat',savePath,num2str(theta,formatSpec)),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
         else
@@ -179,7 +147,7 @@ function generate_example(example_name, theta, varargin)
     
     % Plot the training data
     plot_data = false;
-    if nargin > 2 && varargin{2}
+    if nargin > 7 && varargin{1}
         plot_data = true;
     end
     if plot_data
