@@ -3,6 +3,10 @@ import torch
 import scipy
 from abc import ABC
 from pathlib import Path
+import configparser, ast
+
+parser = configparser.ConfigParser(inline_comment_prefixes="#")
+parser.read('settings.ini')
 
 # tf.float64 doesn't work for Apple tf2
 class Config(ABC):
@@ -16,7 +20,7 @@ class Config(ABC):
         }[self.precision]
         return config[package]
  
-config = Config(32)
+config = Config(parser['GENERAL'].getint('precision'))
 
 # Set the appropriate compute acceleration, default to CPU if nothing is available
 if torch.backends.mps.is_available():

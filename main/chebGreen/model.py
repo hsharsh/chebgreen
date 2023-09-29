@@ -2,7 +2,7 @@ from .greenlearning.utils import DataProcessor
 from .greenlearning.model import GreenNN
 from .chebpy2 import Chebfun2, Chebpy2Preferences, Quasimatrix
 from .chebpy2.chebpy import chebfun
-from .backend import os, sys, Path, np, ABC, MATLABPath
+from .backend import os, sys, Path, np, ABC, MATLABPath, parser, ast
 from .utils import generateMatlabData
 
 class ChebGreen(ABC):
@@ -68,13 +68,13 @@ class ChebGreen(ABC):
             
             if model.checkSavedModels(loadPath = GreenNNPath):          # Check for stored models
                 print(f"Found saved model, Loading model for example \'{example}\' at Theta = {theta:.2f}")
-                model.build(dimension = 1, homogeneousBC = self.homogenousBC, loadPath = GreenNNPath)
+                model.build(dimension = 1, domain = self.domain, homogeneousBC = self.homogenousBC, loadPath = GreenNNPath)
             else:
                 data = DataProcessor(self.datapath + f"/{theta:.2f}.mat")
                 data.generateDataset(trainRatio = 0.95)
-                model.build(dimension = 1, domain = self.domain, layerConfig = [50,50,50,50], activation = 'rational', homogeneousBC = self.homogenousBC,)
+                model.build(dimension = 1, domain = self.domain, homogeneousBC = self.homogenousBC)
                 print(f"Training greenlearning model for example \'{example}\' at Theta = {theta:.2f}")
-                lossHistory = model.train(data, epochs = {'adam':int(5000), 'lbfgs':int(0)})
+                lossHistory = model.train(data)
                 model.saveModels(f"savedModels/{example}/{theta:.2f}")
             
             print(f"Learning a chebfun2 model for example \'{example}\' at Theta = {theta:.2f}")

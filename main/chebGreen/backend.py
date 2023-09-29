@@ -1,8 +1,11 @@
 import numpy as np
-import os,sys,glob,platform
+import os,sys,glob,platform,configparser,ast
 from abc import ABC
 from pathlib import Path
 import matplotlib.pyplot as plt
+
+parser = configparser.ConfigParser(inline_comment_prefixes="#")
+parser.read('settings.ini')
 
 # tf.float64 doesn't work for Apple tf2
 class Config(ABC):
@@ -16,7 +19,7 @@ class Config(ABC):
         }[self.precision]
         return config[package]
  
-config = Config(32)
+config = Config(parser['GENERAL'].getint('precision'))
 
 # Set the appropriate matlab path according to system
 operatingSystem = platform.uname().system

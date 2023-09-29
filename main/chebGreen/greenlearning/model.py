@@ -1,4 +1,4 @@
-from .backend import torch, np, Path, ABC, config, device
+from .backend import torch, np, Path, ABC, config, device, parser,ast
 from .activations import get_activation
 from .loss import LossGreensFunction
 from .utils import approximateDistanceFunction
@@ -9,8 +9,8 @@ class NN(torch.nn.Module):
     def __init__(self,
                  numInputs = 2,
                  numOutputs = 1,
-                 layerConfig = [50, 50, 50, 50],
-                 activation = "rational",
+                 layerConfig = ast.literal_eval(parser['GREENLEARNING']['layerConfig']),
+                 activation = parser['GREENLEARNING']['activation'],
                  dtype = config(torch),
                  device = device):
         # Initialize the Layers. We hold all layers in a ModuleList.
@@ -56,7 +56,14 @@ class GreenNN(ABC):
     def __init__(self) -> None:
         super().__init__()
 
-    def build(self, dimension = 1, domain = np.array([0,1,0,1]), layerConfig = [50, 50, 50, 50], activation = 'rational', homogeneousBC = True, loadPath = None, device = device):
+    def build(self,
+            dimension = 1,
+            domain = np.array([0,1,0,1]),
+            layerConfig = ast.literal_eval(parser['GREENLEARNING']['layerConfig']),
+            activation = parser['GREENLEARNING']['activation'],
+            homogeneousBC = True,
+            loadPath = None,
+            device = device):
         self.dimension = dimension
         if type(domain) is not np.ndarray and type(domain) is list:
             self.domain = np.array(domain)
@@ -74,13 +81,15 @@ class GreenNN(ABC):
             assert self.checkSavedModels(loadPath), "Saved models not found" 
             self.loadModels(loadPath, device = device)
 
-    def train(self, data, epochs = {'adam':1000, 'lbfgs':400}):
+    def train(self, data, epochs = {'adam':parser['GREENLEARNING'].getint('epochs_adam') , 'lbfgs':parser['GREENLEARNING'].getint('epochs_lbfgs')}):
         
         params = list(self.G.parameters()) + list(self.N.parameters())
 
-        self.optimizerAdam = torch.optim.Adam(params, lr = 1e-2)
-        self.schedulerAdam = torch.optim.lr_scheduler.StepLR(self.optimizerAdam, step_size = 100, gamma = 0.9)
-        self.optimizerLBFGS = torch.optim.LBFGS(params, lr = 1e-2)
+        self.optimizerAdam = torch.optim.Adam(params, lr = parser['GREENLEARNING'].getfloat('initLearningRate'))
+        self.schedulerAdam = torch.optim.lr_scheduler.StepLR(self.optimizerAdam,
+                                                            step_size = parser['GREENLEARNING'].getint('stepSize'),
+                                                            gamma = parser['GREENLEARNING'].getfloat('decayRate'))
+        self.optimizerLBFGS = torch.optim.LBFGS(params, lr = parser['GREENLEARNING'].getfloat('initLearningRate'))
 
         assert data.xF.shape[1] == self.dimension and data.xU.shape[1] == self.dimension,\
                 f"Dimension of evaluation points for forcing, {data.xF.shape[1]}, and response, \

@@ -1,13 +1,13 @@
-from .backend import os, sys, Path, MATLABPath
+from .backend import os, sys, Path, MATLABPath, parser
 
 def runCustomScript(script      : str,
                     example     : str   = "data",
                     theta       : float  = None,
-                    Nsample     : int   = 250,
-                    lmbda       : int   = 0.01,
-                    Nf          : int   = 250,
-                    Nu          : int   = 100,
-                    noise_level : float = 0):
+                    Nsample     : int   = parser['MATLAB'].getint('Nsample'),
+                    lmbda       : int   = parser['MATLAB'].getfloat('lambda'),
+                    Nf          : int   = parser['MATLAB'].getint('Nf'),
+                    Nu          : int   = parser['MATLAB'].getint('Nu'),
+                    noise_level : float = parser['MATLAB'].getfloat('noise')):
     """
     Arguments:
     script: Name of the matlab script to run

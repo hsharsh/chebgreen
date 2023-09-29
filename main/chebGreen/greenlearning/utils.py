@@ -1,4 +1,4 @@
-from .backend import torch, np, scipy, ABC, config, device
+from .backend import torch, np, scipy, ABC, config, device, parser
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, F, U):
@@ -18,7 +18,7 @@ class DataProcessor(ABC):
         self.seed = seed
         
     
-    def generateDataset(self, trainRatio = 0.8, batch_size = 32):
+    def generateDataset(self, trainRatio = parser['GREENLEARNING'].getfloat('trainRatio')):
         data = scipy.io.loadmat(self.filePath)
         np.random.seed(self.seed)
 
