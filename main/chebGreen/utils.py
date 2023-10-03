@@ -14,7 +14,7 @@ def runCustomScript(script      : str,
     example: Name of the example to run/Name for the save file
     Nsample: Number of sampled pairs f/u
     lambda: Lengthscale of kernel for sampling f
-    Nf: Discretization for f, lambda > 1/Nf 
+    Nf: Discretization for f, lambda > (size of domain)/Nf 
     Nu: Discretization for u
     noise_level: Noise level of the solutions u
     theta: Control parameter value for the problem
