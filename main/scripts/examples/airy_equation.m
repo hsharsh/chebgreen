@@ -4,11 +4,6 @@ function output_example = airy_equation(theta)
 % Define the domain.
 dom = [0,1];
 
-% Parameter of the equation
-if nargin < 1
-    theta = 10
-end
-
 % Differential operator
 N = chebop(@(x,u) diff(u,2)-theta^2*x*u, dom);
 

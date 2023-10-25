@@ -74,6 +74,7 @@ function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, th
     
     % Define the Gaussian process kernel
     domain_length = dom(end) - dom(1);
+    disp(lambda);
     if strcmp(diff_op.bc,'periodic')
         K = chebfun2(@(x,y)exp(-2*sin(pi*abs(x-y)/domain_length).^2/lambda^2), [dom,dom], 'trig');
     else

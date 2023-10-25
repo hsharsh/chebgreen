@@ -3,7 +3,7 @@ from .greenlearning.model import GreenNN
 from .chebpy2 import Chebfun2, Chebpy2Preferences, Quasimatrix
 from .chebpy2.chebpy import chebfun
 from .backend import os, sys, Path, np, ABC, MATLABPath, parser, ast
-from .utils import generateMatlabData
+from .utils import generateMatlabData, computeEmpiricalError
 
 class ChebGreen(ABC):
     def __init__(self,
@@ -90,6 +90,20 @@ class ChebGreen(ABC):
         if theta not in list(self.interpG.keys()):
             self.interpG[theta] = modelInterp(self.G, theta)
         return self.interpG[theta]
+    
+    def computeEmpiricalError(self, theta):
+        assert self.datapath is not None, "Cannot find the datapath for the model datasets!"
+        data = DataProcessor(self.datapath + f"/{theta:.2f}.mat")
+        data.generateDataset(trainRatio = 0.95)
+        if theta in list(self.interpG.keys()):
+            G = self.interpG[theta]
+        elif theta in list(self.G.keys()):
+            G = self.G[theta]
+        else:
+            raise RuntimeError("No model found for the specified parameter!")
+        
+        return computeEmpiricalError(G, data)
+            
 
 def computeInterpCoeffs(interpParams : list, targetParam: float) -> np.array:
     """Computes the interpolation coefficients (based on fitting Lagrange polynomials) for performing interpolation,

@@ -332,8 +332,8 @@ class Chebfun2(ABC):
             if ax is None:
                 ax = plt.gca()
 
-        xx = np.linspace(0,1,2000)
-        yy = np.linspace(0,1,2000)
+        xx = np.linspace(self.domain[0],self.domain[1],2000)
+        yy = np.linspace(self.domain[2],self.domain[3],2000)
         x, y = np.meshgrid(xx,yy)
         G = self[x,y]
         cf = ax.contourf(x,y,G, 50, cmap = 'turbo', vmin = np.min(G), vmax = np.max(G))
@@ -368,6 +368,26 @@ class Chebfun2(ABC):
     def norm(self): # sqrt(integral of abs(F)^2)
         _, s, _ = self.svd()
         return np.sqrt(np.sum(s))
+    
+    def integralTransform(self, g):
+        """
+        Computes the integral transform on input function g (chebfun), considering the chebfun2, f,
+        as a kernel.
+        \int f(x,y) g(x) dx
+        """
+        f = self
+        cols = f.cols
+        rows = f.rows
+        fScl = np.diag(1/f.pivotValues)
+        X = rows * Quasimatrix(data = [g], transposed = False)
+        return (cols * (fScl @ X)).data[0]
+    
+    @property
+    def T(self):
+        transpose = deepcopy(self)
+        transpose.domain = np.array([transpose.domain[2],transpose.domain[3],transpose.domain[0],transpose.domain[1]])
+        transpose.rows, transpose.cols = transpose.cols.T, transpose.rows.T
+        return transpose
     
     @property
     def cornervalues(self):

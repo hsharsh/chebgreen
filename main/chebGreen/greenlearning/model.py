@@ -179,6 +179,8 @@ class GreenNN(ABC):
             x = np.array([x])
         if isinstance(x.dtype, np.float64):
             x = x.astype(config(np))
+        if isinstance(x,np.ndarray):
+            x = x.astype(config(np))
         if x.dtype == config(np):
             X = torch.tensor(x.reshape(-1,1), dtype = config(torch)).to(self.device)
         with torch.no_grad():

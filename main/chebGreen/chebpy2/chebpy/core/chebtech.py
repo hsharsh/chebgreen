@@ -82,7 +82,7 @@ class Chebtech(Smoothfun, ABC):
 
     @classmethod
     def initcoeffs(cls, coeffs, interval = None):
-        return cls(coeffs, interval = interval)
+        return cls(coeffs.reshape(-1), interval = interval)
     @classmethod
     def initvalues(cls, values, interval=None):
         """Initialise a Chebtech from an array of values at Chebyshev points"""

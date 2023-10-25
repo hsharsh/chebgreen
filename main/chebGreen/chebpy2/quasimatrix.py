@@ -165,7 +165,7 @@ class Quasimatrix(ABC):
 
         if isinstance(F,np.ndarray) and (F.dtype == np.int64 or F.dtype == np.float64):
             if G.transposed:
-                return Quasimatrix(data = chebpy.chebfun(F @ G.coeffrepr(), domain = G.domain, prefs = G.prefs, initcoeffs = True), transposed = True) # Returns (G.shape[0] x inf) matrix
+                return Quasimatrix(data = chebpy.chebfun((F @ G.coeffrepr()).T, domain = G.domain, prefs = G.prefs, initcoeffs = True), transposed = True) # Returns (G.shape[0] x inf) matrix
             else:
                 RuntimeError('Invalid multiplication')  # This should never be reached because of shape check
         

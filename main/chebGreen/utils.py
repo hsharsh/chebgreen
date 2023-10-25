@@ -1,4 +1,6 @@
-from .backend import os, sys, Path, MATLABPath, parser
+from .backend import os, sys, Path, MATLABPath, parser, np
+from chebGreen.chebpy2.chebpy.core.algorithms import chebpts2
+from chebGreen.chebpy2.chebpy.api import chebfun
 
 def runCustomScript(script      : str,
                     example     : str   = "data",
@@ -60,3 +62,32 @@ def generateMatlabData(script: str, example: str, Theta: list = None):
 
     sys.stdout.flush() # Flush the stdout buffer
     return os.path.abspath(f"datasets/{example}") # Return the path to the dataset
+
+def vec2cheb(f, x):
+    f = f.reshape((-1))
+    x = x.reshape((-1))
+    domain = [np.min(x), np.max(x)] # Compute the bounds of the domain
+    
+    # Function is resampled at twice as many sampled points to maintain accuracy in a different basis.
+    N = 2 * f.shape[0] # Check if this is fine
+    
+    # Compute the Chebyshev nodes and scale them to the domain
+    xc = (chebpts2(N) + 1) * ((domain[1] - domain[0])/2) + domain[0]
+
+    # Compute the interpolated value of the function at the Chebyshev nodes
+    fc = np.interp(xc, x, f).reshape((-1,1))
+
+    return chebfun(fc, domain)
+
+def computeEmpiricalError(G, data):
+    RE, UC, U0 = [],[],[]
+    for i in range(data.valDataset[1].numpy().shape[0]):
+        xF, xU = data.xF, data.xU
+        f, u  = data.valDataset[0].numpy()[i,:], data.valDataset[1].numpy()[i,:]
+        f0, u0 = vec2cheb(f,xF), vec2cheb(u,xU)
+        uc = G.integralTransform(f0) + chebfun(G.evaluateN, domain = f0.domain)
+        re = (uc - u0).abs()/np.abs(u0.sum())
+        RE.append(re)
+    
+    error = np.mean([re.sum() for re in RE])
+    return error
