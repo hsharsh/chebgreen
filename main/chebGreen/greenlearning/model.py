@@ -1,4 +1,4 @@
-from .backend import torch, np, Path, ABC, config, device, parser,ast
+from .backend import torch, np, Path, ABC, config, device, parser, ast
 from .activations import get_activation
 from .loss import LossGreensFunction
 from .utils import approximateDistanceFunction
@@ -61,7 +61,7 @@ class GreenNN(ABC):
             domain = np.array([0,1,0,1]),
             layerConfig = ast.literal_eval(parser['GREENLEARNING']['layerConfig']),
             activation = parser['GREENLEARNING']['activation'],
-            homogeneousBC = True,
+            dirichletBC = True,
             loadPath = None,
             device = device):
         self.dimension = dimension
@@ -72,7 +72,7 @@ class GreenNN(ABC):
         self.device = device
         self.layerConfig = layerConfig
         self.activation = activation
-        self.addADF = homogeneousBC
+        self.addADF = dirichletBC
 
         if loadPath == None:
             self.G = NN(numInputs = dimension*2, numOutputs = dimension, layerConfig = layerConfig, activation = activation).to(self.device)
@@ -81,14 +81,22 @@ class GreenNN(ABC):
             assert self.checkSavedModels(loadPath), "Saved models not found" 
             self.loadModels(loadPath, device = device)
 
-    def train(self, data, epochs = {'adam':parser['GREENLEARNING'].getint('epochs_adam') , 'lbfgs':parser['GREENLEARNING'].getint('epochs_lbfgs')}):
+    def train(self,
+              data,
+              epochs = {'adam':parser['GREENLEARNING'].getint('epochs_adam') ,
+                        'lbfgs':parser['GREENLEARNING'].getint('epochs_lbfgs')},
+              trainHomogeneous = True
+              ):
         
-        params = list(self.G.parameters()) + list(self.N.parameters())
-
+        if trainHomogeneous:
+            params = list(self.G.parameters()) + list(self.N.parameters())
+        else:
+            params = list(self.G.parameters())
         self.optimizerAdam = torch.optim.Adam(params, lr = parser['GREENLEARNING'].getfloat('initLearningRate'))
         self.schedulerAdam = torch.optim.lr_scheduler.StepLR(self.optimizerAdam,
                                                             step_size = parser['GREENLEARNING'].getint('stepSize'),
                                                             gamma = parser['GREENLEARNING'].getfloat('decayRate'))
+                                                            
         self.optimizerLBFGS = torch.optim.LBFGS(params, lr = parser['GREENLEARNING'].getfloat('initLearningRate'))
 
         assert data.xF.shape[1] == self.dimension and data.xU.shape[1] == self.dimension,\
@@ -107,7 +115,7 @@ class GreenNN(ABC):
             self.N.train()
 
             self.optimizerAdam.zero_grad()
-            lossValue = self.lossfn(fTrain, uTrain)
+            lossValue = self.lossfn(fTrain, uTrain, trainHomogeneous)
             lossValue.backward()
 
             self.optimizerAdam.step()
@@ -118,7 +126,7 @@ class GreenNN(ABC):
 
             with torch.no_grad():
                 fVal, uVal = data.valDataset
-                lossValue = self.lossfn(fVal.to(device), uVal.to(device))
+                lossValue = self.lossfn(fVal.to(device), uVal.to(device), trainHomogeneous)
             lossHistory['validation'].append(lossValue.item())
             if (epoch+1) % 100 == 0:
                 print(f"Loss at epoch {epoch+1}: Training = {lossHistory['training'][-1]:.3E}, Validation = {lossHistory['validation'][-1]:.3E}")
@@ -132,20 +140,21 @@ class GreenNN(ABC):
 
             def closure():
                 self.optimizerLBFGS.zero_grad()
-                lossValue = self.lossfn(fTrain, uTrain)
+                lossValue = self.lossfn(fTrain, uTrain, trainHomogeneous)
                 lossValue.backward()
                 return lossValue
+            
             with torch.no_grad():
-                lossValue = self.lossfn(fTrain, uTrain)
+                lossValue = self.lossfn(fTrain, uTrain, trainHomogeneous)
+                
             self.optimizerLBFGS.step(closure)
-
             
             # Change this to be an average over batches. Currently assuming a single batch
             lossHistory['training'].append(lossValue.item())
 
             with torch.no_grad():
                 fVal, uVal = data.valDataset
-                lossValue = self.lossfn(fVal.to(device), uVal.to(device))
+                lossValue = self.lossfn(fVal.to(device), uVal.to(device), trainHomogeneous)
             lossHistory['validation'].append(lossValue.item())
             if (epoch+1) % 10 == 0:
                 print(f"Loss at epoch {epoch+1}: Training = {lossHistory['training'][-1]:.3E}, Validation = {lossHistory['validation'][-1]:.3E}")
@@ -185,8 +194,7 @@ class GreenNN(ABC):
             X = torch.tensor(x.reshape(-1,1), dtype = config(torch)).to(self.device)
         with torch.no_grad():
             N = self.N(X).cpu().numpy()
-        return N 
-
+        return N
 
     def init_loss(self, xF, xU):
         self.lossfn = LossGreensFunction(self.G, self.N, xF, xU, self.domain, self.addADF ,self.device)

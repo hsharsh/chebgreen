@@ -2,6 +2,7 @@ from .greenlearning.utils import DataProcessor
 from .greenlearning.model import GreenNN
 from .chebpy2 import Chebfun2, Chebpy2Preferences, Quasimatrix
 from .chebpy2.chebpy import chebfun
+from .chebpy2.chebpy.core.settings import ChebPreferences
 from .backend import os, sys, Path, np, ABC, MATLABPath, parser, ast
 from .utils import generateMatlabData, computeEmpiricalError
 
@@ -12,7 +13,7 @@ class ChebGreen(ABC):
                 generateData    : bool = True,
                 script          : str = "generate_example",
                 example         : str = None,
-                homogenousBC    : bool = True,
+                dirichletBC    : bool = True,
                 datapath        : str = None
                 ):
         super().__init__()
@@ -41,7 +42,7 @@ class ChebGreen(ABC):
         else:
             self.domain = domain
         
-        self.homogenousBC = homogenousBC
+        self.dirichletBC = dirichletBC
 
         # Set data path for the model:
         if generateData: 
@@ -62,25 +63,31 @@ class ChebGreen(ABC):
     def generateChebfun2Models(self, example):
         model = GreenNN()
         self.G = {}
+        self.N = {}
         for theta in self.Theta:
             
             GreenNNPath = "savedModels/" + example + f"/{theta:.2f}"
             
             if model.checkSavedModels(loadPath = GreenNNPath):          # Check for stored models
                 print(f"Found saved model, Loading model for example \'{example}\' at Theta = {theta:.2f}")
-                model.build(dimension = 1, domain = self.domain, homogeneousBC = self.homogenousBC, loadPath = GreenNNPath)
+                model.build(dimension = 1, domain = self.domain, dirichletBC = self.dirichletBC, loadPath = GreenNNPath)
             else:
                 data = DataProcessor(self.datapath + f"/{theta:.2f}.mat")
                 data.generateDataset(trainRatio = 0.95)
-                model.build(dimension = 1, domain = self.domain, homogeneousBC = self.homogenousBC)
+                model.build(dimension = 1, domain = self.domain, dirichletBC = self.dirichletBC)
                 print(f"Training greenlearning model for example \'{example}\' at Theta = {theta:.2f}")
                 lossHistory = model.train(data)
                 model.saveModels(f"savedModels/{example}/{theta:.2f}")
             
-            print(f"Learning a chebfun2 model for example \'{example}\' at Theta = {theta:.2f}")
+            print(f"Learning a chebfun model for example \'{example}\' at Theta = {theta:.2f}")
             self.G[float(theta)] = (Chebfun2(model.evaluateG, domain = self.domain, prefs = Chebpy2Preferences(), simplify = True))
-            print(f"Chebfun2 model added for example \'{example}\' at Theta = {theta:.2f}\n")
-        
+            print(f"Chebfun model added for example \'{example}\' at Theta = {theta:.2f}\n")
+
+            # Store the homogeneous solution
+            prefs = ChebPreferences()
+            prefs.eps = 1e-8
+            self.N[float(theta)] = chebfun(model.evaluateN, domain = self.domain[2:], prefs = prefs)
+    
         maxRank = np.min(np.array([self.G[theta].rank for theta in self.Theta]))
 
         for theta in self.Theta:
@@ -97,12 +104,14 @@ class ChebGreen(ABC):
         data.generateDataset(trainRatio = 0.95)
         if theta in list(self.interpG.keys()):
             G = self.interpG[theta]
+            N = None
         elif theta in list(self.G.keys()):
             G = self.G[theta]
+            N = self.N[theta]
         else:
             raise RuntimeError("No model found for the specified parameter!")
         
-        return computeEmpiricalError(G, data)
+        return computeEmpiricalError(data, G, N)
             
 
 def computeInterpCoeffs(interpParams : list, targetParam: float) -> np.array:

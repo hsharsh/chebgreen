@@ -8,7 +8,7 @@ class DataProcessor(ABC):
         self.seed = seed
         
     
-    def generateDataset(self, trainRatio = 0.8, batch_size  = 32):
+    def generateDataset(self, trainRatio = 0.8, batch_size  = 1024):
         data = scipy.io.loadmat(self.filePath)
         np.random.seed(self.seed)
 

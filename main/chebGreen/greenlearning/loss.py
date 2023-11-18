@@ -18,16 +18,19 @@ class LossGreensFunction(ABC):
                                                device
                                                ).to(device).reshape((-1,1))
 
-    def __call__(self, fTrain, uTrain):
+    def __call__(self, fTrain, uTrain, trainHomogeneous = True):
         nF, nU = self.xF.shape[0], self.xU.shape[0]
         if self.addADF:
             G = torch.reshape(self.ADF*self.G(self.X),(nF, nU)).T
         else:
             G = torch.reshape(self.G(self.X),(nF, nU)).T            
-        u_hom = self.N(self.xU)
+        uHomogeneous = self.N(self.xU)
+        uPred = (torch.matmul(G, torch.mul(fTrain, self.wF).T) + uHomogeneous).T
 
-        uPred = (torch.matmul(G, torch.mul(fTrain, self.wF).T) + u_hom).T
-        
-        loss = torch.sum(torch.square(uTrain - uPred)*self.wU, dim = 1)/ \
-                torch.sum(torch.square(uTrain)*self.wU, dim = 1)
+        if trainHomogeneous:
+            loss = torch.sum(torch.square(uTrain - uPred)*self.wU, dim = 1)/ \
+                    torch.sum(torch.square(uTrain)*self.wU, dim = 1)
+        else:
+            loss = torch.sum(torch.square(uTrain - uPred)*self.wU, dim = 1)/ \
+                    torch.sum(torch.square(uTrain - uHomogeneous.T)*self.wU, dim = 1)
         return torch.mean(loss)

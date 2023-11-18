@@ -1,11 +1,13 @@
-from .backend import tf, np, ABC, config
+from .backend import tf, np, ABC, config, parser, ast
 from .utils import generateEvaluationGrid, approximateDistanceFunction
 from .activations import get_activation
 from .loss import LossGreensFunction
 
-
-
-def NN(numInputs = 2, numOutputs = 1, layerConfig = np.array([50, 50, 50, 50]), activation = "rational", dtype = config(tf)):
+def NN(numInputs = 2,
+       numOutputs = 1,
+       layerConfig = ast.literal_eval(parser['GREENLEARNING']['layerConfig']),
+       activation = parser['GREENLEARNING']['activation'],
+       dtype = config(tf)):
     layers = []
     layers.append(tf.keras.layers.InputLayer(input_shape = (numInputs,), dtype = config(tf)))
         
@@ -21,7 +23,13 @@ class GreenNN(ABC):
         super().__init__()
         print(f"Using tensorflow {tf.__version__}")
 
-    def build(self, dimension = 1, domain = np.array([0,1,0,1]), layerConfig = [50, 50, 50, 50], activation = 'rational', loadPath = None):    
+    def build(self,
+              dimension = 1,
+              domain = np.array([0,1,0,1]),
+              layerConfig = ast.literal_eval(parser['GREENLEARNING']['layerConfig']),
+              activation = parser['GREENLEARNING']['activation'],
+              homogenousBC = True,
+              loadPath = None):    
         """
         greenlearning models benefit from using a few steps of L-BFGS optimizer during the training
         but between tensorflow probability not being available for M1 Macbooks (which I am
@@ -32,7 +40,11 @@ class GreenNN(ABC):
         L-BFGS optimizer to have the model converge nicely :)
         """
         self.dimension = dimension
-        self.domain = domain
+        if type(domain) is not np.ndarray and type(domain) is list:
+            self.domain = np.array(domain)
+        else:
+            self.domain = domain
+        self.addADF = homogenousBC
 
         if loadPath == None:
             self.G = NN(numInputs = dimension*2, numOutputs = dimension, layerConfig = np.array(layerConfig), activation = activation)
@@ -42,15 +54,20 @@ class GreenNN(ABC):
             self.loadModels(loadPath)
 
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-                        initial_learning_rate=1e-2,
-                        decay_steps=100,
-                        decay_rate=0.9)
+                        initial_learning_rate = parser['GREENLEARNING'].getfloat('initLearningRate'),
+                        decay_steps = parser['GREENLEARNING'].getint('stepSize'),
+                        decay_rate = parser['GREENLEARNING'].getfloat('decayRate'))
+        
         self.optimizer = tf.keras.optimizers.Adam(learning_rate = lr_schedule,
                                                   beta_1 = 0.9,
                                                   beta_2 = 0.999,
                                                   epsilon = 1e-8)
     
-    def train(self, data, epochs = {'adam':int(1000), 'lbfgs':int(200)}):
+    def train(self,
+              data,
+              epochs = {'adam':parser['GREENLEARNING'].getint('epochs_adam') ,
+                        'lbfgs':parser['GREENLEARNING'].getint('epochs_lbfgs')},
+              trainHomogeneous = True):
         
         assert data.xF.shape[1] == self.dimension and data.xU.shape[1] == self.dimension,\
                 f"Dimension of evaluation points for forcing, {data.xF.shape[1]}, and response, \
@@ -63,10 +80,14 @@ class GreenNN(ABC):
             for fTrain, uTrain in data.trainDataset:
                 with tf.GradientTape() as tape:
                     lossValue = self.lossfn(fTrain,uTrain)
-                    
-                gradG, gradN = tape.gradient(lossValue, [self.G.trainable_weights, self.N.trainable_weights])
-                self.optimizer.apply_gradients(zip(gradG, self.G.trainable_weights))
-                self.optimizer.apply_gradients(zip(gradN, self.N.trainable_weights))
+                
+                if trainHomogeneous:
+                    gradG, gradN = tape.gradient(lossValue, [self.G.trainable_weights, self.N.trainable_weights])
+                    self.optimizer.apply_gradients(zip(gradG, self.G.trainable_weights))
+                    self.optimizer.apply_gradients(zip(gradN, self.N.trainable_weights))
+                else:
+                    gradG = tape.gradient(lossValue, self.G.trainable_weights)
+                    self.optimizer.apply_gradients(zip(gradG, self.G.trainable_weights))
 
             # Change this to be an average over batches. Currently assuming a single batch
             lossHistory['training'].append(lossValue.numpy())
@@ -90,13 +111,28 @@ class GreenNN(ABC):
         if x.dtype == config(np):
             X = tf.constant(np.vstack([x.ravel(), s.ravel()]).T, dtype = config(tf))
         
-        G = (tf.reshape(approximateDistanceFunction(X[:,0], X[:,1],
-                                            self.domain.astype(config(np))),(-1,1))*self.G(X)).numpy().reshape(shape)
+        if self.addADF:
+            G = (tf.reshape(approximateDistanceFunction(X[:,0], X[:,1],
+                                                self.domain.astype(config(np))),(-1,1))*self.G(X)).numpy().reshape(shape)
+        else:
+            G = self.G(X).numpy().reshape(shape)
         return G
 
+    def evaluateN(self, x):
+        if isinstance(x,config(np)):
+            x = np.array([x])
+        if isinstance(x.dtype, np.float64):
+            x = x.astype(config(np))
+        if isinstance(x,np.ndarray):
+            x = x.astype(config(np))
+        if x.dtype == config(np):
+            X = tf.constant(x.reshape(-1,1), dtype = config(tf))
+        
+        N = self.N(X).numpy()
+        return N       
 
     def init_loss(self, xF, xU):
-        self.lossfn = LossGreensFunction(self.G, self.N, xF, xU, self.domain)
+        self.lossfn = LossGreensFunction(self.G, self.N, xF, xU, self.domain, self.addADF)
     
     def saveModels(self, path = "temp"):
         self.G.save(path + "/G")

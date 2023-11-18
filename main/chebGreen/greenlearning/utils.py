@@ -27,8 +27,8 @@ class DataProcessor(ABC):
         # self.xG = data['XG'].astype(dtype = config(np))
         # self.yG = data['YG'].astype(dtype = config(np))
 
-        F = torch.from_numpy(data['F'].astype(dtype = config(np)))
-        U = torch.from_numpy(data['U'].astype(dtype = config(np)))
+        F = torch.from_numpy(data['F'].astype(dtype = config(np))).to(device)
+        U = torch.from_numpy(data['U'].astype(dtype = config(np))).to(device)
 
         # Train-validation split
         TrainTestIndices = np.random.choice(F.shape[1], F.shape[1], replace = False)

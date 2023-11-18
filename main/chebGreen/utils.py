@@ -1,4 +1,4 @@
-from .backend import os, sys, Path, MATLABPath, parser, np
+from .backend import os, sys, Path, MATLABPath, parser, np, tempfile
 from chebGreen.chebpy2.chebpy.core.algorithms import chebpts2
 from chebGreen.chebpy2.chebpy.api import chebfun
 
@@ -40,12 +40,13 @@ def runCustomScript(script      : str,
         {script}({example},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{theta:.2f}); exit;\" | tail -n +11".split())
 
     # Write the MATLAB command to a temporary file and run it
-    with open("temp.sh", 'w') as f:
+    temp = next(tempfile._get_candidate_names()) + '.sh'
+    with open(temp, 'w') as f:
         f.write(matlabcmd)
         f.close()
 
-    os.system(f"bash temp.sh") # Run the temporary file
-    os.remove("temp.sh") # Remove the temporary file
+    os.system(f"bash {temp}") # Run the temporary file
+    os.remove(temp) # Remove the temporary file
     sys.stdout.flush() # Flush the stdout buffer
 
 def generateMatlabData(script: str, example: str, Theta: list = None):
@@ -79,14 +80,19 @@ def vec2cheb(f, x):
 
     return chebfun(fc, domain)
 
-def computeEmpiricalError(G, data):
+def computeEmpiricalError(data, G, N = None):
     RE, UC, U0 = [],[],[]
-    for i in range(data.valDataset[1].numpy().shape[0]):
+    if N is None:
+        print('Assuming a zero homogeneous solution.')
+    for i in range(data.valDataset[1].cpu().numpy().shape[0]):
         xF, xU = data.xF, data.xU
-        f, u  = data.valDataset[0].numpy()[i,:], data.valDataset[1].numpy()[i,:]
+        f, u  = data.valDataset[0].cpu().numpy()[i,:], data.valDataset[1].cpu().numpy()[i,:]
         f0, u0 = vec2cheb(f,xF), vec2cheb(u,xU)
-        uc = G.integralTransform(f0) + chebfun(G.evaluateN, domain = f0.domain)
-        re = (uc - u0).abs()/np.abs(u0.sum())
+        if N is None:
+            uc = G.T.integralTransform(f0)
+        else:
+            uc = G.T.integralTransform(f0) + N
+        re = (uc - u0).abs()/u0.abs().sum()
         RE.append(re)
     
     error = np.mean([re.sum() for re in RE])

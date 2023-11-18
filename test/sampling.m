@@ -12,6 +12,7 @@ function error = sampling(N,sigma)
     L = chol(K,'lower');
     
     f = generate_random_function(L);
+    disp(f)
     z = (chebpts(N)+1)*((b-a)/2) + a;
     fu = f(X);
     fc = interp1(X,fu,z);
