@@ -10,6 +10,9 @@ parser.read('settings.ini')
 
 # tf.float64 doesn't work for Apple tf2
 class Config(ABC):
+    """
+    Class to set the precision for the numpy and torch
+    """
     def __init__(self, precision):
         self.precision = precision
     

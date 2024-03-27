@@ -1,6 +1,7 @@
 from .backend import torch, np, scipy, ABC, config, device, parser
 
 class Dataset(torch.utils.data.Dataset):
+    """ Dataset class for the Green's function approximation."""
     def __init__(self, F, U):
         self.F = F
         self.U = U
@@ -13,12 +14,28 @@ class Dataset(torch.utils.data.Dataset):
     
 class DataProcessor(ABC):
     def __init__(self, filePath, seed = 42):
+        """
+        Constructor for the DataProcessor class which loads the data from the file and splits it into training and validation datasets.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            filePath: A string which specifies the path to the data file.
+
+            seed: An integer which specifies the seed for the random number generator.
+        ----------------------------------------------------------------------------------------------------------------
+        """
         self.data = None
         self.filePath = filePath
         self.seed = seed
         
     
     def generateDataset(self, trainRatio = parser['GREENLEARNING'].getfloat('trainRatio')):
+        """
+        Method to generate the training and validation datasets.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            trainRatio: A float which specifies the ratio of training data to the total data.
+        ----------------------------------------------------------------------------------------------------------------
+        """
         data = scipy.io.loadmat(self.filePath)
         np.random.seed(self.seed)
 
@@ -39,6 +56,17 @@ class DataProcessor(ABC):
         self.valDataset = (F[:,Test_Indices].T, U[:,Test_Indices].T)
 
 def generateEvaluationGrid(xU, xF):
+    """
+    Function to generate an evaluation grid for the Green's function.
+    ----------------------------------------------------------------------------------------------------------------
+    Arguments:
+        xU: A tensor of shape (nU, d) which specifies the evaluation points for the Green's function.
+
+        xF: A tensor of shape (nF, d) which specifies the evaluation points for the Green's function.
+    ----------------------------------------------------------------------------------------------------------------
+    Returns:
+    A tensor of shape (nF*nU, 1) which specifies the evaluation points for the Green's function.
+    """
     nF, nU, d = xF.shape[0], xU.shape[0], xU.shape[1]
     x, y = [],[]
     for i in range(d):
@@ -48,9 +76,24 @@ def generateEvaluationGrid(xU, xF):
 
 
 def approximateDistanceFunction(x, y, dom, device):
+    """
+    Function to evaluate Approximate Distance Function for a specified domain at a set of evaluation points.
+    ----------------------------------------------------------------------------------------------------------------
+    Arguments:
+        x: A tensor of shape (n, 1) which specifies the x-coordinates of the evaluation points.
+
+        y: A tensor of shape (n, 1) which specifies the y-coordinates of the evaluation points.
+
+        domain: A list of size 4 which specifies the domain for the Green's function.
+    ----------------------------------------------------------------------------------------------------------------
+    Returns:
+    A tensor of shape (n, 1) which specifies the Approximate Distance Function for the domain.
+    """
+    # Define a distance metric
     def distance(x1, y1, x2, y2):
         return torch.sqrt(torch.square(x2-x1) + torch.square(y2-y1))
 
+    # Define a distance function for a line segment
     def lineSegment(x, y, x1, y1, x2, y2):
         L = distance(x1, y1, x2, y2)
         xc, yc = (x1+x2)/2, (y1+y2)/2
@@ -59,12 +102,15 @@ def approximateDistanceFunction(x, y, dom, device):
         phi = torch.sqrt(torch.square(t) + torch.pow(f,4))
         return torch.sqrt(torch.square(f) + 0.25 * torch.square(phi-t))
     
+    # Define the line segments which define the domain
     R = torch.zeros((x.shape[0],1))
     segments = torch.from_numpy(np.array([[dom[0], dom[2], dom[1], dom[2]],
                          [dom[1], dom[2], dom[1], dom[3]],
                          [dom[1], dom[3], dom[0], dom[3]],
                          [dom[0], dom[3], dom[0], dom[2]]
                         ]).astype(config(np))).to(device)
+    
+    # Combine the distance functions for each line segment to get the distance function for the domain
     phi = []
     for i in range(4):
         phi.append(lineSegment(x,y,segments[i,0], segments[i,1], segments[i,2], segments[i,3]))

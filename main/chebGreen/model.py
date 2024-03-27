@@ -1,7 +1,7 @@
 from .greenlearning.utils import DataProcessor
 from .greenlearning.model import GreenNN
 from .chebpy2 import Chebfun2, Chebpy2Preferences, Quasimatrix
-from .chebpy2.chebpy import chebfun
+from .chebpy2.chebpy import chebfun, Chebfun
 from .chebpy2.chebpy.core.settings import ChebPreferences
 from .backend import os, sys, Path, np, ABC, MATLABPath, parser, ast
 from .utils import generateMatlabData, computeEmpiricalError
@@ -22,6 +22,8 @@ class ChebGreen(ABC):
         Theta: A numpy array of shape (N_models, N_dimension) which specifies parameteric value at
         which the models are specified or need to be evaluated at.
 
+        domain: A list of size 4 which specifies the domain for the Green's function.
+
         generateData: If set to True, "path" should be the location of the matlab script which is
         run at the parametric values in Theta to generate the dataset.
 
@@ -29,6 +31,8 @@ class ChebGreen(ABC):
         generating the dataset.
 
         example: This specifies the name of the example which the user wants to run.
+
+        dirichletBC: A boolean which specifies whether the boundary conditions are Dirichlet or not.
 
         data: If generateData is set to False, then user must provide the path to the dataset, which
         should be in the following format:
@@ -48,6 +52,7 @@ class ChebGreen(ABC):
         if generateData: 
             print(f"Generating dataset for example \'{example}\'")
             self.datapath = generateMatlabData(script, example, self.Theta)
+            os.system(f'cp settings.ini datasets/{example}/settings.ini')
         else:
             print(f"Loading dataset at {datapath}")
             assert datapath is not None, "No datapath specified!"
@@ -59,6 +64,7 @@ class ChebGreen(ABC):
         print("Generating chebfun2 models:")
         self.generateChebfun2Models(example)
         self.interpG = {}
+        self.interpN = {}
 
     def generateChebfun2Models(self, example):
         model = GreenNN()
@@ -77,6 +83,7 @@ class ChebGreen(ABC):
                 model.build(dimension = 1, domain = self.domain, dirichletBC = self.dirichletBC)
                 print(f"Training greenlearning model for example \'{example}\' at Theta = {theta:.2f}")
                 lossHistory = model.train(data)
+                os.system(f'cp settings.ini savedModels/{example}/settings.ini')
                 model.saveModels(f"savedModels/{example}/{theta:.2f}")
             
             print(f"Learning a chebfun model for example \'{example}\' at Theta = {theta:.2f}")
@@ -93,10 +100,11 @@ class ChebGreen(ABC):
         for theta in self.Theta:
             self.G[theta].truncate(maxRank)
 
+        
     def generateNewModel(self, theta):
         if theta not in list(self.interpG.keys()):
-            self.interpG[theta] = modelInterp(self.G, theta)
-        return self.interpG[theta]
+            self.interpG[theta], self.interpN[theta] = modelInterp(self.G, self.N, theta)
+        return self.interpG[theta], self.interpN[theta]
     
     def computeEmpiricalError(self, theta):
         assert self.datapath is not None, "Cannot find the datapath for the model datasets!"
@@ -104,7 +112,7 @@ class ChebGreen(ABC):
         data.generateDataset(trainRatio = 0.95)
         if theta in list(self.interpG.keys()):
             G = self.interpG[theta]
-            N = None
+            N = self.interpN[theta]
         elif theta in list(self.G.keys()):
             G = self.G[theta]
             N = self.N[theta]
@@ -122,6 +130,7 @@ def computeInterpCoeffs(interpParams : list, targetParam: float) -> np.array:
     Arguments:
         interpSet: Dictionary of models (Chebfun2 objects) which are used to generate an interoplated model at the
             parameter targetParam.
+
         targetParam: A float which defines the parameter at which we want to find a new model.
 
     --------------------------------------------------------------------------------------------------------------------
@@ -155,6 +164,7 @@ def computeOrderSigns(R0: Quasimatrix, R1: Quasimatrix) -> tuple([np.array, np.a
     --------------------------------------------------------------------------------------------------------------------
     Args:
         R0: Orthonormal quasimatrix, the columns of which are used as the reference to re-order and find signs
+
         R1: Orthonormal quasimatrix for which the columns are supposed to be reordered.
 
     --------------------------------------------------------------------------------------------------------------------
@@ -193,7 +203,7 @@ def computeOrderSigns(R0: Quasimatrix, R1: Quasimatrix) -> tuple([np.array, np.a
     
     return order, signs
 
-def modelInterp(interpSet: dict[float,Chebfun2], targetParam: float) -> Chebfun2:
+def modelInterp(interpSet: dict[float,Chebfun2], interpSetHom: dict[float,Chebfun], targetParam: float) -> Chebfun2:
     """
     Interpolation for the models. The left and right singular functions are interpolated in the tangent space of
     (L^2(domain))^K (K is the model rank) using a QR based retraction map. The singular values are interpolated
@@ -206,6 +216,7 @@ def modelInterp(interpSet: dict[float,Chebfun2], targetParam: float) -> Chebfun2
     Arguments:
         interpSet: Dictionary of models (Chebfun2 objects) which are used to generate an interoplated model at the
             parameter targetParam.
+            
         targetParam: A float which defines the parameter at which we want to find a new model.
 
     --------------------------------------------------------------------------------------------------------------------
@@ -233,10 +244,13 @@ def modelInterp(interpSet: dict[float,Chebfun2], targetParam: float) -> Chebfun2
     V0 = Vt0.T
     K = interpSet[refIndex].rank
     
+    # Initialize the interpolated singular functions and singular values
     U_ = Quasimatrix(data = chebfun(np.zeros((2,K)), domain = interpSet[refIndex].domain[2:]), transposed = False)
     S_ = np.zeros(K)
     V_ = Quasimatrix(data = chebfun(np.zeros((2,K)), domain = interpSet[refIndex].domain[:2]), transposed = False)
+    N_ = chebfun(0, domain = interpSetHom[refIndex].domain)
     
+    # Interpolate the singular functions and singular values
     for theta, model in interpSet.items():
         U, S, Vt = model.cdr()
         order, signs = computeOrderSigns(U0,U)
@@ -256,8 +270,10 @@ def modelInterp(interpSet: dict[float,Chebfun2], targetParam: float) -> Chebfun2
         
         # Interpolate the singular values directly
         S_ += S * interpCoeffs[theta]
+        N_ += interpSetHom[theta] * interpCoeffs[theta]
         
-        
+
+    # Retract the interpolated singular functions and singular values from the tangent space at the origin    
     Un, _ = (U0 + U_).qr()
     Vn, _ = (V0 + V_).qr()
     
@@ -268,7 +284,7 @@ def modelInterp(interpSet: dict[float,Chebfun2], targetParam: float) -> Chebfun2
     Vtn = (Vn[:,order] * np.diag(signs)).T
     
     
-    return Chebfun2([Un, Sn, Vtn])
+    return Chebfun2([Un, Sn, Vtn]), N_
 
 
 

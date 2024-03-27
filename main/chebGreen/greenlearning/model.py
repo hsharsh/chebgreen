@@ -13,19 +13,37 @@ class NN(torch.nn.Module):
                  activation = parser['GREENLEARNING']['activation'],
                  dtype = config(torch),
                  device = device):
-        # Initialize the Layers. We hold all layers in a ModuleList.
-
         super(NN, self).__init__()
+        """
+        Class to define a generic feedforward neural network.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            numInputs: An integer which specifies the number of inputs to the neural network.
 
+            numOutputs: An integer which specifies the number of outputs from the neural network.
+
+            layerConfig: A list of integers which specifies the number of neurons in each layer of the neural network.
+
+            activation: A string which specifies the activation function to be used in the neural network.
+
+            dtype: A torch.dtype which specifies the data type for the neural network.
+
+            device: A torch.device which specifies the device for the neural network.
+        ----------------------------------------------------------------------------------------------------------------
+        """
+
+        # Initialize the Layers. We hold all layers in a ModuleList.
         self.layers = torch.nn.ModuleList()
         self.activationFunctions = torch.nn.ModuleList()
 
+        # Add the input layer
         self.layers.append(torch.nn.Linear(
                                 in_features  = numInputs,
                                 out_features = layerConfig[0],
                                 bias         = True ).to(dtype = dtype, device = device))
         self.activationFunctions.append(get_activation(activation))
 
+        # Add the hidden layers based on the layer configuration.
         for neuronsIn, neuronsOut in zip(layerConfig[:-1],layerConfig[1:]):
             self.layers.append(torch.nn.Linear(
                                 in_features  = neuronsIn,
@@ -33,6 +51,7 @@ class NN(torch.nn.Module):
                                 bias         = True ).to(dtype = dtype, device = device))
             self.activationFunctions.append(get_activation(activation))
 
+        # Add the output layer
         self.layers.append(torch.nn.Linear(
                                 in_features  = layerConfig[-1],
                                 out_features = numOutputs,
@@ -55,6 +74,9 @@ class NN(torch.nn.Module):
 class GreenNN(ABC):
     def __init__(self) -> None:
         super().__init__()
+        """
+            Class to define a neural network architecture and training loop for the Green's function approximation.
+        """
 
     def build(self,
             dimension = 1,
@@ -64,6 +86,27 @@ class GreenNN(ABC):
             dirichletBC = True,
             loadPath = None,
             device = device):
+        """
+        Method to build the neural network architecture.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            dimension: An integer which specifies the dimension of the problem.
+
+            domain: A list or numpy array which specifies the domain for the Green's function.
+
+            layerConfig: A list of integers which specifies the number of neurons in each hidden layer of the neural network.
+
+            activation: A string which specifies the activation function to be used in the neural network.
+
+            dirichletBC: A boolean which specifies whether the problem has Dirichlet boundary condition or not.
+
+            loadPath: A string which specifies the path to the saved model. If a path is provided,
+                the model is loaded from the path.
+
+            device: A torch.device which specifies the device for the neural network.
+        ----------------------------------------------------------------------------------------------------------------
+        """
+
         self.dimension = dimension
         if type(domain) is not np.ndarray and type(domain) is list:
             self.domain = np.array(domain)
@@ -87,7 +130,18 @@ class GreenNN(ABC):
                         'lbfgs':parser['GREENLEARNING'].getint('epochs_lbfgs')},
               trainHomogeneous = True
               ):
-        
+        """
+        Method to train the neural network.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            data: An instance of the DataLoader class which contains the training and validation datasets.
+
+            epochs: A dictionary which specifies the number of epochs for Adam and LBFGS optimizers.
+
+            trainHomogeneous: A boolean which specifies whether to learn the homogeneous solution.
+                This can be set to False, if we know beforehand that the homogeneous solution is zero.
+        ----------------------------------------------------------------------------------------------------------------
+        """
         if trainHomogeneous:
             params = list(self.G.parameters()) + list(self.N.parameters())
         else:
@@ -99,13 +153,14 @@ class GreenNN(ABC):
                                                             
         self.optimizerLBFGS = torch.optim.LBFGS(params, lr = parser['GREENLEARNING'].getfloat('initLearningRate'))
 
+        # Check if the dimension of the evaluation points match with the model dimension
         assert data.xF.shape[1] == self.dimension and data.xU.shape[1] == self.dimension,\
                 f"Dimension of evaluation points for forcing, {data.xF.shape[1]}, and response, \
                 {data.xU.shape[1]}, should match with the model dimension, {self.dimension}"
         
-        self.init_loss(data.xF, data.xU)
+        self.init_loss(data.xF, data.xU) # Initialize the loss function
 
-        lossHistory = {'training': [], 'validation':[]}
+        lossHistory = {'training': [], 'validation':[]} # Initialize a dictionary to store the loss history
 
         print("Training with Adam:")
         for epoch in range(int(epochs['adam'])):
@@ -138,6 +193,7 @@ class GreenNN(ABC):
             self.G.train()
             self.N.train()
 
+            # Closure function for LBFGS
             def closure():
                 self.optimizerLBFGS.zero_grad()
                 lossValue = self.lossfn(fTrain, uTrain, trainHomogeneous)
@@ -163,6 +219,19 @@ class GreenNN(ABC):
     
     # Not implemented for Green's function of dimension > 1
     def evaluateG(self, x, s):
+        """
+        Method to evaluate the Green's function at a set of evaluation points.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            x: A numpy array or torch tensor which specifies the evaluation points in the x-direction.
+            
+            s: A numpy array or torch tensor which specifies the evaluation points in the s-direction.
+        ----------------------------------------------------------------------------------------------------------------
+        Returns:
+            A numpy array which specifies the value of the Green's function at the evaluation points.
+        """
+
+        # Check to ensure that the input is in the correct format.
         if isinstance(x,config(np)):
             x = np.array([x])
         if isinstance(s,config(np)):
@@ -174,6 +243,7 @@ class GreenNN(ABC):
         if x.dtype == config(np):
             X = torch.tensor(np.vstack([x.ravel(), s.ravel()]).T, dtype = config(torch)).to(self.device)
         with torch.no_grad():
+            # Evaluate the Green's function depending on whether the approximate distance function was added to the loss
             if self.addADF:
                 G = (approximateDistanceFunction(X[:,0], X[:,1],
                                              self.domain.astype(config(np)),
@@ -184,6 +254,16 @@ class GreenNN(ABC):
 
     # Not implemented for Green's function of dimension > 1
     def evaluateN(self, x):
+        """
+        Method to evaluate the neural network at a set of evaluation points.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            x: A numpy array or torch tensor which specifies the evaluation points.
+        ----------------------------------------------------------------------------------------------------------------
+        Returns:
+            A numpy array which specifies the value of the neural network at the evaluation points.
+        """
+
         if isinstance(x,config(np)):
             x = np.array([x])
         if isinstance(x.dtype, np.float64):
@@ -200,6 +280,14 @@ class GreenNN(ABC):
         self.lossfn = LossGreensFunction(self.G, self.N, xF, xU, self.domain, self.addADF ,self.device)
     
     def saveModels(self, path = "temp"):
+        """
+        Method to save the neural network parameters.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            path: A string which specifies the path to save the model.
+        ----------------------------------------------------------------------------------------------------------------
+        """
+
         savedict = {'dimension': self.dimension,
             'layerConfig': self.layerConfig,
             'activation': self.activation,
@@ -210,9 +298,27 @@ class GreenNN(ABC):
         torch.save(savedict, path + "/model.pth")
 
     def checkSavedModels(self, loadPath):
+        """
+        Method to check if the saved models exist.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            loadPath: A string which specifies the path to the saved model.
+        ----------------------------------------------------------------------------------------------------------------
+        Returns:
+            A boolean which specifies whether the saved models exist.
+        """
         return Path(loadPath+"/model.pth").is_file()
         
     def loadModels(self, loadPath, device = device):
+        """
+        Method to load the neural network parameters.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            loadPath: A string which specifies the path to the saved model.
+
+            device: A torch.device which specifies the device for the neural network.
+        ----------------------------------------------------------------------------------------------------------------
+        """
         model = torch.load(loadPath+'/model.pth')
         self.G = NN(numInputs = model['dimension']*2, numOutputs = model['dimension'], layerConfig = model['layerConfig'], activation = model['activation']).to(device)
         self.N = NN(numInputs = model['dimension'], numOutputs = model['dimension'], layerConfig = model['layerConfig'], activation = model['activation']).to(device)

@@ -8,7 +8,23 @@ from copy import deepcopy
 
 class Chebfun2(ABC):
     def __init__(self, g, domain = None, prefs = Chebpy2Preferences(), simplify = False, vectorize = False):
-        
+        """
+        Constructor for the Chebfun2 class.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            g: A python function which specifies the function to be approximated. This is evaluated on a grid of points to
+                construct the Chebfun2 object. The function should be vectorized if vectorize is set to False.
+
+            domain: A numpy array which specifies the domain of the function.
+
+            prefs: A Chebpy2Preferences object which specifies the preferences for the approximation.
+
+            simplify: A boolean which specifies whether to simplify the approximation using a singular value expansion.
+
+            vectorize: A boolean which specifies whether to vectorize the function. 
+
+        ----------------------------------------------------------------------------------------------------------------
+        """
         # Default domain is [-1,1] x [-1, 1]
         if domain is None:
             self.domain = prefs.domain
@@ -35,6 +51,7 @@ class Chebfun2(ABC):
         else:
             self.cols, self.rows, self.pivotValues, self.pivotLocations = self.constructor(lambda x,y: g(x,y), vectorize)
 
+        # Simplify the Chebfun2 object using a singular value decomposition. We truncate to the rank floor(2*n/pi) where n is the number of pivot values.
         if simplify:
             U, S, Vt = self.svd()
             self.cols, self.pivotValues, self.rows = U, 1/S, Vt
@@ -45,6 +62,7 @@ class Chebfun2(ABC):
     # Prioritize the operator functions in Chebfun2 over other data types
     __array_ufunc__ = None
 
+    # Representation of the Chebfun2 object
     def __repr__(self):
         header = f"chebfun2 object\n"
         toprow = "     domain       rank               corner values\n"
@@ -55,6 +73,24 @@ class Chebfun2(ABC):
     
 
     def constructor(self, g, vectorize = False):
+        """
+        Constructor for the Chebfun2 class.
+        ----------------------------------------------------------------------------------------------------------------
+        Arguments:
+            g: A python function which specifies the function to be approximated. This is evaluated on a grid of points to
+                construct the Chebfun2 object. The function should be vectorized if vectorize is set to False.
+
+            vectorize: A boolean which specifies whether to vectorize the function. 
+        ----------------------------------------------------------------------------------------------------------------
+        Returns:
+            cols: A column Quasimatrix which specifies the columns of the Chebfun2 object.
+
+            rows: A row Quasimatrix object which specifies the rows of the Chebfun2 object.
+
+            pivotValues: A numpy array which specifies the pivot values of the Chebfun2 object.
+
+            pivotLocations: A numpy array which specifies the pivot locations of the Chebfun2 object.
+        """
 
         # Define this somewhere in a config file
         prefx = self.prefs.prefx
@@ -323,6 +359,7 @@ class Chebfun2(ABC):
         
         raise NotImplementedError('Cannot evaluate chebfun2 object with given inputs')
     
+    # Plotting function for the Chebfun2 objects.
     def plot(self, fig = None, ax = None, **kwds):
         plt = import_plt()
         if plt:
@@ -340,9 +377,11 @@ class Chebfun2(ABC):
         fig.colorbar(cf)
 
 
+    # Return a CUR decomposition for the Chebfun2 object.
     def cdr(self):
         return self.cols, np.diag(1/self.pivotValues), self.rows
     
+    # Return a Singular Value Expansion for the Chebfun2 object.
     def svd(self):
         C, D, R = self.cdr()
         
@@ -362,6 +401,7 @@ class Chebfun2(ABC):
         
         return U, S, V
     
+    # Truncate the Chebfun2 object to a rank K.
     def truncate(self, K):
         self.cols, self.pivotValues, self.rows = self.cols[:,:K], self.pivotValues[:K], self.rows[:K,:]
     
@@ -383,23 +423,23 @@ class Chebfun2(ABC):
         return (cols * (fScl @ X)).data[0]
     
     @property
-    def T(self):
+    def T(self): # Transpose
         transpose = deepcopy(self)
         transpose.domain = np.array([transpose.domain[2],transpose.domain[3],transpose.domain[0],transpose.domain[1]])
         transpose.rows, transpose.cols = transpose.cols.T, transpose.rows.T
         return transpose
     
     @property
-    def cornervalues(self):
+    def cornervalues(self): # Corner values of the Chebfun2 object
         xx, yy = np.meshgrid(self.domain[:2], self.domain[2:])  
         return self[xx,yy].reshape(-1)
 
     @property
-    def rank(self):    
+    def rank(self): # Rank of the Chebfun2 object
         return len(self.pivotValues)
 
     @property
-    def max(self):
+    def max(self): # Maximum value of the Chebfun2 object
         m, n = len(self.rows), len(self.cols)
         # Minmum samples = 9, Maximum samples = 2000
         m, n = max(min(m,9),2000), max(min(n,9),2000)
@@ -408,7 +448,7 @@ class Chebfun2(ABC):
         return np.max(self[x,y])
     
     @property
-    def min(self):
+    def min(self): # Minimum value of the Chebfun2 object
         m, n = len(self.rows), len(self.cols)
         # Minmum samples = 9, Maximum samples = 2000
         m, n = max(min(m,9),2000), max(min(n,9),2000)
@@ -417,7 +457,7 @@ class Chebfun2(ABC):
         return np.min(self[x,y])
     
     @property
-    def vscale(self):
+    def vscale(self): # Vertical scale of the Chebfun2 object
         m, n = len(self.rows), len(self.cols)
         # Minmum samples = 9, Maximum samples = 2000
         m, n = max(min(m,9),2000), max(min(n,9),2000)
@@ -425,6 +465,7 @@ class Chebfun2(ABC):
         x, y = points2D(m, n, self.domain, prefx, prefy)
         return np.max(np.abs(self[x,y]))
 
+# Helper functions for the constructor
 def Max(A):
     return np.max(A), np.argmax(A)
 
@@ -451,11 +492,8 @@ def points2D(m, n, dom, prefx, prefy):
     [xx, yy] = np.meshgrid(x,y)
     return xx, yy
 
-
-
 def evaluate(op, xx, yy, vectorize = 0):
-    # EVALUATE  Wrap the function handle in a FOR loop if the vectorize flag is
-    # turned on.
+    # Wrap the function handle in a FOR loop if the vectorize flag is turned on.
 
     if(vectorize):
         vals = np.zeros((yy.shape[0], xx.shape[1]))
@@ -467,12 +505,11 @@ def evaluate(op, xx, yy, vectorize = 0):
     return vals
 
 def getTol(xx, yy, vals, dom, pseudoLevel):
-    # GETTOL     Calculate a tolerance for the Chebfun2 constructor.
-    #
-    #  This is the 2D analogue of the tolerance employed in the chebtech
-    #  constructors. It is based on a finite difference approximation to the
-    #  gradient, the size of the approximation domain, the internal working
-    #  tolerance, and an arbitrary (2/3) exponent.
+    """
+    Calculate a tolerance for the Chebfun2 constructor. This is the 2D analogue of the tolerance employed in the chebtech
+    constructors. It is based on a finite difference approximation to the gradient, the size of the approximation domain,
+    the internal working tolerance, and an arbitrary (2/3) exponent.
+    """
 
     m, n = vals.shape
     grid = max(m,n)
@@ -513,9 +550,10 @@ def gridRefine( grid, pref):
     return grid, nesting
 
 def completeACA(A, absTol, factor):
-    # Adaptive Cross Approximation with complete pivoting. This command is
-    # the continuous analogue of Gaussian elimination with complete pivoting.
-    # Here, we attempt to adaptively find the numerical rank of the function.
+    """
+    Adaptive Cross Approximation with complete pivoting. This command is the continuous analogue of Gaussian elimination with complete pivoting.
+    Here, we aim to dynamically determine the numerical rank of the function.
+    """
 
     # Set up output variables.
     nx, ny = A.shape
@@ -543,9 +581,11 @@ def completeACA(A, absTol, factor):
 
     # The function is the zero function.
     if scl == 0:
-        # Let's pass back the zero matrix that is the same size as A. 
-        # This ensures that chebpy2(np.zeros(5)) has a 5x5 (zero) coefficient 
-        # matrix.  
+        """
+        Return a zero matrix of the same size as A.
+        
+        This ensures that chebpy2(np.zeros(5)) returns a 5x5 zero coefficient matrix.
+        """
         pivotValue = 0
         rows = np.zeros((1, A.shape[1]))
         cols = np.zeros((A.shape[0], 1))
@@ -574,17 +614,16 @@ def completeACA(A, absTol, factor):
         infNorm , ind = Max(np.abs(A)) # Slightly faster.
         row , col = np.unravel_index(ind, A.shape) # Check for col/row major
 
-        # Have a bias towards the diagonal of A, so that it can be used as a test
-        # for nonnegative definite functions. (Complete GE and Cholesky are the
-        # same as nonnegative definite functions have an absolute maximum on the
-        # diagonal, except there is the possibility of a tie with an off-diagonal
-        # absolute maximum. Bias toward diagonal maxima to prevent this.)
+        """
+        Have a bias towards the diagonal of A, so that it can be used as a test for nonnegative definite functions.
+        This bias is important as nonnegative definite functions have an absolute maximum on the diagonal. 
+        Complete GE and Cholesky are the same in this context, but there is a possibility of a tie with an off-diagonal absolute maximum. 
+        Biasing towards diagonal maxima helps prevent this scenario.
+        """
         if (nx == ny) and ((np.max(np.abs(np.diag(A))) - infNorm) > -absTol):
             infNorm, ind = Max(np.abs(np.diag(A)))
             row = ind
             col = ind
-    
-    # print(infNorm)
     
     if infNorm <= absTol:
         ifail = 0                               # We didn't fail.
