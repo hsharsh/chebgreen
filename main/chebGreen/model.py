@@ -19,24 +19,33 @@ class ChebGreen(ABC):
         super().__init__()
         """
         Arguments:        
-        Theta: A numpy array of shape (N_models, N_dimension) which specifies parameteric value at
-        which the models are specified or need to be evaluated at.
+            Theta: A numpy array of shape (N_models, N_dimension) which specifies parameteric value at
+            which the models are specified or need to be evaluated at.
 
-        domain: A list of size 4 which specifies the domain for the Green's function.
+            domain: A list of size 4 which specifies the domain for the Green's function.
 
-        generateData: If set to True, "path" should be the location of the matlab script which is
-        run at the parametric values in Theta to generate the dataset.
+            generateData: If set to True, "path" should be the location of the matlab script which is
+            run at the parametric values in Theta to generate the dataset.
 
-        script: A string which specifies the name matlab script in the current directory for
-        generating the dataset.
+            script: A string which specifies the name matlab script in the current directory for
+            generating the dataset.
 
-        example: This specifies the name of the example which the user wants to run.
+            example: This specifies the name of the example which the user wants to run.
 
-        dirichletBC: A boolean which specifies whether the boundary conditions are Dirichlet or not.
+            dirichletBC: A boolean which specifies whether the boundary conditions are Dirichlet or not.
 
-        data: If generateData is set to False, then user must provide the path to the dataset, which
-        should be in the following format:
-        ---------------------------------{Specify Data Format here}---------------------------------
+            data: If generateData is set to False, then user must provide the path to the dataset, which
+            should be in the following format:
+
+            The dataset should be a .mat file with the following fields:
+                - X: The positions of points in the domain at which the solutions are sampled.
+                    An array of size (Nx, 1) where Nx is number of points of the afforementioned points.
+                - Y: The positions of points in the domain at which the forcing functions are sampled.
+                    An array of size (Ny, 1) where Ny is number of points of the afforementioned points.
+                - F: The forcing terms for the Green's function.
+                    An array of size (Ny, N) where N is the number of samples.
+                - U: The solutions for the system under corresponding forcing functions.
+                    An array of size (Nx, N) where N is the number of samples.
         """
         
         self.Theta = Theta
