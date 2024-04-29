@@ -92,8 +92,8 @@ class ChebGreen(ABC):
                 model.build(dimension = 1, domain = self.domain, dirichletBC = self.dirichletBC)
                 print(f"Training greenlearning model for example \'{example}\' at Theta = {theta:.2f}")
                 lossHistory = model.train(data)
-                os.system(f'cp settings.ini savedModels/{example}/settings.ini')
                 model.saveModels(f"savedModels/{example}/{theta:.2f}")
+                os.system(f'cp settings.ini savedModels/{example}/settings.ini')
             
             print(f"Learning a chebfun model for example \'{example}\' at Theta = {theta:.2f}")
             self.G[float(theta)] = (Chebfun2(model.evaluateG, domain = self.domain, prefs = Chebpy2Preferences(), simplify = True))
@@ -115,10 +115,7 @@ class ChebGreen(ABC):
             self.interpG[theta], self.interpN[theta] = modelInterp(self.G, self.N, theta)
         return self.interpG[theta], self.interpN[theta]
     
-    def computeEmpiricalError(self, theta):
-        assert self.datapath is not None, "Cannot find the datapath for the model datasets!"
-        data = DataProcessor(self.datapath + f"/{theta:.2f}.mat")
-        data.generateDataset(trainRatio = 0.95)
+    def computeEmpiricalError(self, theta, data = None):        
         if theta in list(self.interpG.keys()):
             G = self.interpG[theta]
             N = self.interpN[theta]
@@ -128,6 +125,13 @@ class ChebGreen(ABC):
         else:
             raise RuntimeError("No model found for the specified parameter!")
         
+        if data is not None:
+            return computeEmpiricalError(data, G, N)
+
+        assert self.datapath is not None, "Cannot find the datapath for the model datasets!"
+        data = DataProcessor(self.datapath + f"/{theta:.2f}.mat")
+        data.generateDataset(trainRatio = 0.95)
+
         return computeEmpiricalError(data, G, N)
             
 

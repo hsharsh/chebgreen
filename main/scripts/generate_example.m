@@ -4,15 +4,17 @@
 % run the command
 % generate_gl_example('helmholtz',theta);
 
-function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, theta, varargin)
+function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, seed, theta, varargin)
     % Add warning about Chebfun
     assert(exist('chebfun') == 2,"This code requires the Chebfun package. See http://www.chebfun.org/download/ for installation details.")
     
     % Add examples to the MATLAB path
     addpath('scripts/examples')
 
+    rng(seed);
+
     % Load the differential operator example
-    if nargin > 6
+    if nargin > 7
         disp(['### Example = ', example_name, ' @ theta = ',num2str(theta), ' ###'])
         output_example = feval(example_name, theta);
     else
@@ -152,12 +154,16 @@ function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, th
 
     % Save the data
     formatSpec = '%.2f';
-    savePath = sprintf('datasets/%s',example_name);
+    if nargin > 8
+        savePath = sprintf('datasets/%s-%s',example_name, varargin{1});
+    else
+        savePath = sprintf('datasets/%s',example_name);
+    end
     if ~exist(savePath, 'dir')
         mkdir(savePath);
     end
 
-    if nargin > 6
+    if nargin > 7
         if exist("ExactGreen")
             save(sprintf('%s/%s.mat',savePath,num2str(theta,formatSpec)),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
         else
@@ -173,7 +179,7 @@ function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, th
     
     % Plot the training data
     plot_data = false;
-    if nargin > 7 && varargin{1}
+    if nargin > 9 && varargin{1}
         plot_data = true;
     end
     if plot_data
@@ -191,7 +197,6 @@ function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, th
         xlim([min(X),max(X)])
         axis square
     end
-    
 end
 
 function f = generate_random_fun(L)

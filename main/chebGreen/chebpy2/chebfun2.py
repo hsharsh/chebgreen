@@ -66,7 +66,7 @@ class Chebfun2(ABC):
     def __repr__(self):
         header = f"chebfun2 object\n"
         toprow = "     domain       rank               corner values\n"
-        rowdta = (f"[{self.domain[0]},{self.domain[1]}] x [{self.domain[2]},{self.domain[3]}]     {self.rank}       "
+        rowdta = (f"[{self.domain[0]:.3f},{self.domain[1]:.3f}] x [{self.domain[2]:.3f},{self.domain[3]:.3f}]     {self.rank}       "
             f"[{self.cornervalues[0]:.3f} {self.cornervalues[1]:.3f} {self.cornervalues[2]:.3f} {self.cornervalues[3]:.3f}]\n")
         btmrow = f"vertical scale = {self.vscale:2f}"
         return header + toprow + rowdta + btmrow

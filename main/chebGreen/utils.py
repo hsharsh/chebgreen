@@ -1,6 +1,7 @@
-from .backend import os, sys, Path, MATLABPath, parser, np, tempfile
+from .backend import os, sys, Path, MATLABPath, parser, np, tempfile, config
 from chebGreen.chebpy2.chebpy.core.algorithms import chebpts2
 from chebGreen.chebpy2.chebpy.api import chebfun
+from chebGreen.chebpy2.chebpy.core.settings import ChebPreferences
 
 def runCustomScript(script      : str,
                     example     : str   = "data",
@@ -9,7 +10,9 @@ def runCustomScript(script      : str,
                     lmbda       : int   = parser['MATLAB'].getfloat('lambda'),
                     Nf          : int   = parser['MATLAB'].getint('Nf'),
                     Nu          : int   = parser['MATLAB'].getint('Nu'),
-                    noise_level : float = parser['MATLAB'].getfloat('noise')):
+                    noise_level : float = parser['MATLAB'].getfloat('noise'),
+                    seed        : int   = 0,
+                    saveSuffix  : str   = None):
     """
     Arguments:
     script: Name of the matlab script to run
@@ -20,6 +23,7 @@ def runCustomScript(script      : str,
     Nu: Discretization for u
     noise_level: Noise level of the solutions u
     theta: Control parameter value for the problem
+    saveSuffix: Suffix to add to the save file name
 
     Returns:
     Nothing. Saves the data in the datasets folder.
@@ -31,13 +35,23 @@ def runCustomScript(script      : str,
 
     # Depending on the script type, define the appropriate MATLAB command
     if theta is None:
-        matlabcmd = " ".join(f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \
-        \"addpath('scripts');\
-        {script}({example},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f}); exit;\" | tail -n +11".split())
+        if saveSuffix is not None:
+            matlabcmd = " ".join(f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \
+            \"addpath('scripts');\
+            {script}({example},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{seed},\'{saveSuffix}\'); exit;\" | tail -n +11".split())
+        else:
+            matlabcmd = " ".join(f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \
+            \"addpath('scripts');\
+            {script}({example},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{seed}); exit;\" | tail -n +11".split())
     else:
-        matlabcmd = " ".join(f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \
-        \"addpath('scripts');\
-        {script}({example},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{theta:.2f}); exit;\" | tail -n +11".split())
+        if saveSuffix is not None:
+            matlabcmd = " ".join(f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \
+            \"addpath('scripts');\
+            {script}({example},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{seed},{theta:.2f},\'{saveSuffix}\'); exit;\" | tail -n +11".split())
+        else:
+            matlabcmd = " ".join(f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \
+            \"addpath('scripts');\
+            {script}({example},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{seed},{theta:.2f}); exit;\" | tail -n +11".split())
 
     # Write the MATLAB command to a temporary file and run it
     temp = next(tempfile._get_candidate_names()) + '.sh'
@@ -64,10 +78,11 @@ def generateMatlabData(script: str, example: str, Theta: list = None):
     sys.stdout.flush() # Flush the stdout buffer
     return os.path.abspath(f"datasets/{example}") # Return the path to the dataset
 
-def vec2cheb(f, x):
+def vec2cheb(f, x, domain = None):
     f = f.reshape((-1))
     x = x.reshape((-1))
-    domain = [np.min(x), np.max(x)] # Compute the bounds of the domain
+    if domain is None:
+        domain = [np.min(x), np.max(x)] # Compute the bounds of the domain
     
     # Function is resampled at twice as many sampled points to maintain accuracy in a different basis.
     N = 2 * f.shape[0] # Check if this is fine
@@ -78,7 +93,9 @@ def vec2cheb(f, x):
     # Compute the interpolated value of the function at the Chebyshev nodes
     fc = np.interp(xc, x, f).reshape((-1,1))
 
-    return chebfun(fc, domain)
+    prefs = ChebPreferences()
+    prefs.eps = np.finfo(config(np)).eps
+    return chebfun(fc, domain, prefs = prefs)
 
 def computeEmpiricalError(data, G, N = None):
     RE, UC, U0 = [],[],[]
@@ -87,7 +104,16 @@ def computeEmpiricalError(data, G, N = None):
     for i in range(data.valDataset[1].cpu().numpy().shape[0]):
         xF, xU = data.xF, data.xU
         f, u  = data.valDataset[0].cpu().numpy()[i,:], data.valDataset[1].cpu().numpy()[i,:]
-        f0, u0 = vec2cheb(f,xF), vec2cheb(u,xU)
+
+        # Artifically fix the domain precision issue: Need to fix this
+        domainF = np.array([np.min(xF), np.max(xF)])
+        domainU = np.array([np.min(xU), np.max(xU)])
+        if np.isclose(domainF,G.domain[2:], atol = np.finfo(config(np)).eps).all():
+            domainF = G.domain[2:]
+        if np.isclose(domainU,G.domain[:2], atol = np.finfo(config(np)).eps).all():
+            domainU = G.domain[:2]
+
+        f0, u0 = vec2cheb(f,xF,domainF), vec2cheb(u,xU,domainU)
         if N is None:
             uc = G.T.integralTransform(f0)
         else:

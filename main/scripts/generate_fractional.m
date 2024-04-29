@@ -1,7 +1,9 @@
-function generate_fractional(example_name, Nsample, lambda, Nf, Nu, noise_level, theta, varargin)
+function generate_fractional(example_name, Nsample, lambda, Nf, Nu, noise_level, seed, theta, varargin)
     % Add warning about Chebfun
     assert(exist('chebfun') == 2,"This code requires the Chebfun package. See http://www.chebfun.org/download/ for installation details.")
 
+    rng(seed);
+    
     disp(['Number of samples: ',num2str(Nsample)]);
     disp(['Length scale: ',num2str(lambda)]);
     disp(['Nf: ',num2str(Nf)]);
@@ -9,7 +11,7 @@ function generate_fractional(example_name, Nsample, lambda, Nf, Nu, noise_level,
     disp(['Noise: ',num2str(noise_level*100),'%']);
     disp('---------------------------------------');
 
-    dom = [-1,1];
+    dom = [-pi/2,pi/2];
     
     n_input = 1;
     n_output = 1;
@@ -28,7 +30,7 @@ function generate_fractional(example_name, Nsample, lambda, Nf, Nu, noise_level,
     
     % Define the Gaussian process kernel
     domain_length = dom(end) - dom(1);
-    K = chebfun2(@(x,y)exp(-2*sin(pi*abs(x-y)/domain_length).^(domain_length))/lambda^2), [dom,dom], 'trig');
+    K = chebfun2(@(x,y)exp(-2*sin(pi*abs(x-y)/domain_length).^2/lambda^2), [dom,dom], 'trig');
 
     % Compute the Cholesky factorization of K
     L = chol(K, 'lower');
@@ -126,12 +128,16 @@ function generate_fractional(example_name, Nsample, lambda, Nf, Nu, noise_level,
 
     % Save the data
     formatSpec = '%.2f';
-    savePath = sprintf('datasets/%s',example_name);
+    if nargin > 8
+        savePath = sprintf('datasets/%s-%s',example_name, varargin{1});
+    else
+        savePath = sprintf('datasets/%s',example_name);
+    end
     if ~exist(savePath, 'dir')
         mkdir(savePath);
     end
 
-    if nargin > 6
+    if nargin > 7
         if exist("ExactGreen")
             save(sprintf('%s/%s.mat',savePath,num2str(theta,formatSpec)),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
         else
@@ -147,7 +153,7 @@ function generate_fractional(example_name, Nsample, lambda, Nf, Nu, noise_level,
     
     % Plot the training data
     plot_data = false;
-    if nargin > 7 && varargin{1}
+    if nargin > 9 && varargin{1}
         plot_data = true;
     end
     if plot_data
@@ -165,7 +171,7 @@ function generate_fractional(example_name, Nsample, lambda, Nf, Nu, noise_level,
         xlim([min(X),max(X)])
         axis square
     end
-    
+
 end
 
 function f = generate_random_fun(L)
