@@ -42,10 +42,9 @@ class Chebfun2(ABC):
             check = (g[0].shape[1] == g[1].shape[0] and g[2].shape[0] == g[1].shape[0])
             if check:
                 assert check and not np.count_nonzero(g[1] == 0), \
-                    " ".join("Chebfun2 takes the input [C D R] such the bivariate function it \
-                             represents is \ f = C * diag(D) * R, where u is a column quasimatrix, \
-                             D has no zeros, and vt is a row quasimatrix.".split())
-
+                    " ".join("""Chebfun2 takes the input [C D R] such the bivariate function it
+                             represents is f = C * diag(D) * R, where u is a column quasimatrix,
+                             D has no zeros, and vt is a row quasimatrix.""".split())
             self.cols, self.pivotValues, self.rows = g[0], 1/g[1], g[2]
             self.domain = np.hstack([self.rows.domain,self.cols.domain])
         else:
@@ -413,7 +412,7 @@ class Chebfun2(ABC):
         """
         Computes the integral transform on input function g (chebfun), considering the chebfun2, f,
         as a kernel.
-        \int f(x,y) g(x) dx
+        \\int f(x,y) g(x) dx
         """
         f = self
         cols = f.cols

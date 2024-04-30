@@ -91,8 +91,8 @@ class ChebGreen(ABC):
                 data.generateDataset(trainRatio = 0.95)
                 model.build(dimension = 1, domain = self.domain, dirichletBC = self.dirichletBC)
                 print(f"Training greenlearning model for example \'{example}\' at Theta = {theta:.2f}")
-                lossHistory = model.train(data)
-                model.saveModels(f"savedModels/{example}/{theta:.2f}")
+                lossHistory = model.train(data, savePath = GreenNNPath)
+                model.build(dimension = 1, domain = self.domain, dirichletBC = self.dirichletBC, loadPath = GreenNNPath)
                 os.system(f'cp settings.ini savedModels/{example}/settings.ini')
             
             print(f"Learning a chebfun model for example \'{example}\' at Theta = {theta:.2f}")

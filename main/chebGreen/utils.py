@@ -1,5 +1,5 @@
 from .backend import os, sys, Path, MATLABPath, parser, np, tempfile, config
-from chebGreen.chebpy2.chebpy.core.algorithms import chebpts2
+from chebGreen.chebpy2.chebpy.core.algorithms import chebpts2, vals2coeffs2, standard_chop
 from chebGreen.chebpy2.chebpy.api import chebfun
 from chebGreen.chebpy2.chebpy.core.settings import ChebPreferences
 
@@ -95,7 +95,21 @@ def vec2cheb(f, x, domain = None):
 
     prefs = ChebPreferences()
     prefs.eps = np.finfo(config(np)).eps
-    return chebfun(fc, domain, prefs = prefs)
+
+    coeffs_fc = vals2coeffs2(fc)
+
+    # Find tolerance for standard chop
+    a, b = domain
+    h = max(np.linalg.norm(domain, np.inf),1)
+    hF = b - a
+    hscale = max(h / hF, 1)
+    tol = prefs.eps * hscale
+
+    # Determine where to chop the coefficients
+    npts = standard_chop(coeffs_fc, tol)
+
+    cbfun = chebfun(coeffs_fc[:npts].reshape(-1,1), domain, prefs = prefs, initcoeffs = True)
+    return cbfun
 
 def computeEmpiricalError(data, G, N = None):
     RE, UC, U0 = [],[],[]

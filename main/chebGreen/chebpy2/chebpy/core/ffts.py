@@ -3,7 +3,7 @@ import platform
 # Set the appropriate fft according to system
 operatingSystem = platform.uname().system
 if operatingSystem == "Darwin":
-    import pyfftw.interfaces.numpy_fft as _fft
+    import numpy.fft as _fft
 elif operatingSystem == "Linux":
     import numpy.fft as _fft
 

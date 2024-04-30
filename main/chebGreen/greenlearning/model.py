@@ -3,7 +3,7 @@ from .activations import get_activation
 from .loss import LossGreensFunction
 from .utils import approximateDistanceFunction
 
-
+MODEL_SAVE_FREQUENCY = 50
 
 class NN(torch.nn.Module):
     def __init__(self,
@@ -128,7 +128,8 @@ class GreenNN(ABC):
               data,
               epochs = {'adam':parser['GREENLEARNING'].getint('epochs_adam') ,
                         'lbfgs':parser['GREENLEARNING'].getint('epochs_lbfgs')},
-              trainHomogeneous = True
+              trainHomogeneous = True,
+              savePath = "temp"
               ):
         """
         Method to train the neural network.
@@ -161,7 +162,8 @@ class GreenNN(ABC):
         self.init_loss(data.xF, data.xU) # Initialize the loss function
 
         lossHistory = {'training': [], 'validation':[]} # Initialize a dictionary to store the loss history
-
+        
+        bestLoss = np.inf
         print("Training with Adam:")
         for epoch in range(int(epochs['adam'])):
             fTrain, uTrain = data.trainDataset
@@ -178,6 +180,11 @@ class GreenNN(ABC):
 
             # Change this to be an average over batches. Currently assuming a single batch
             lossHistory['training'].append(lossValue.item())
+
+            # Save the model if the validation loss is the better than the previous best loss
+            if (epoch+1)%MODEL_SAVE_FREQUENCY == 0 and lossHistory['validation'][-1] < bestLoss:
+                bestLoss = lossHistory['validation'][-1]
+                self.saveModels(path = savePath)
 
             with torch.no_grad():
                 fVal, uVal = data.valDataset
@@ -208,12 +215,22 @@ class GreenNN(ABC):
             # Change this to be an average over batches. Currently assuming a single batch
             lossHistory['training'].append(lossValue.item())
 
+            # Save the model if the validation loss is the better than the previous best loss
+            if (epoch+1)%MODEL_SAVE_FREQUENCY == 0 and lossHistory['validation'][-1] < bestLoss:
+                bestLoss = lossHistory['validation'][-1]
+                self.saveModels(path = savePath)
+
             with torch.no_grad():
                 fVal, uVal = data.valDataset
                 lossValue = self.lossfn(fVal.to(device), uVal.to(device), trainHomogeneous)
             lossHistory['validation'].append(lossValue.item())
             if (epoch+1) % 10 == 0:
                 print(f"Loss at epoch {epoch+1}: Training = {lossHistory['training'][-1]:.3E}, Validation = {lossHistory['validation'][-1]:.3E}")
+
+        # Fallback to save the last model if the MODEL_SAVE_FREQUENCY is not reached
+            if lossHistory['validation'][-1] < bestLoss:
+                bestLoss = lossHistory['validation'][-1]
+                self.saveModels(path = savePath)
 
         return lossHistory
     

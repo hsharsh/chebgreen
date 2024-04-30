@@ -16,13 +16,13 @@ conda activate chebGreen
 
 conda install jupyterlab
 
-# Install pytorch. Choose the appropriate conda installation here:
-# https://pytorch.org/get-started/locally/
+# Install pytorch. Choose the appropriate conda installation here: https://pytorch.org/get-started/locally/
+# As an example, for me the installer is:
+conda install pytorch::pytorch torchvision torchaudio -c pytorch
 
 conda install scipy
 conda install numpy
 conda install matplotlib
-conda install -c conda-forge pyfftw 
 ```
 
 The code uses **MATLAB** and the **MATLAB** library Chebfun to generate the datasets. Instructions for installation can be found here:
