@@ -1,7 +1,7 @@
 from .backend import os, sys, Path, MATLABPath, parser, np, tempfile, config
 from chebGreen.chebpy2.chebpy.core.algorithms import chebpts2, vals2coeffs2, standard_chop
 from chebGreen.chebpy2.chebpy.api import chebfun
-from chebGreen.chebpy2.chebpy.core.settings import ChebPreferences
+from chebGreen.chebpy2.chebpy.core.settings import ChebPreferences, _preferences
 
 def runCustomScript(script      : str,
                     example     : str   = "data",
@@ -132,7 +132,12 @@ def computeEmpiricalError(data, G, N = None):
             uc = G.T.integralTransform(f0)
         else:
             uc = G.T.integralTransform(f0) + N
+            
+        # Ensure that the the error computation is done with the correct precision
+        prefs = ChebPreferences()
+        prefs.eps = np.finfo(config(np)).eps
         re = (uc - u0).abs()/u0.abs().sum()
+        _preferences.reset()
         RE.append(re)
     
     error = np.mean([re.sum() for re in RE])

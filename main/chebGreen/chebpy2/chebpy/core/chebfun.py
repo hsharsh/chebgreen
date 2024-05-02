@@ -307,6 +307,9 @@ class Chebfun:
         htol = 1e2 * self.hscale * prefs.eps
         for fun in self:
             rts = fun.roots()
+            # Remove roots which are NaN, i.e., those which are not roots. These are generated
+            # because of the rootfinding algorithm not handling precision changes correctly.
+            rts = rts[~np.isnan(rts)]
             # ignore first root if equal to the last root of previous fun
             # TODO: there could be multiple roots at breakpoints
             if prvrts.size > 0 and rts.size > 0:

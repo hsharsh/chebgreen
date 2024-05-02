@@ -1,6 +1,7 @@
 import numpy as np
 from abc import ABC
 from . import chebpy
+from ..backend import config
 
 class Chebpy2Preferences(ABC):
     """Default preferences for chebpy."""
@@ -12,5 +13,5 @@ class Chebpy2Preferences(ABC):
         
         self.prefx = chebpy.core.settings.ChebPreferences()
         self.prefy = chebpy.core.settings.ChebPreferences()
-        self.prefx.eps = np.finfo(np.float32).eps
-        self.prefy.eps = np.finfo(np.float32).eps
+        self.prefx.eps = np.finfo(config(np)).eps
+        self.prefy.eps = np.finfo(config(np)).eps

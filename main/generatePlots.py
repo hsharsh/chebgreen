@@ -55,7 +55,9 @@ def main(example):
         script = "generate_fractional"
         example = "fractional_laplacian"
         dirichletBC = False
-        vmin, vmax = 0,1
+        vmin, vmax = -0.23, 1.68
+    else:
+        raise ValueError("Invalid example name.")
 
     model = ChebGreen(Theta, domain, generateData, script, example, dirichletBC)
 
