@@ -27,6 +27,7 @@ $ cd chebGreen
 
 # production installation
 $ pip install . -r requirements.txt
+```
 
 The code uses **MATLAB** and the **MATLAB** library Chebfun to generate the datasets. Instructions for installation can be found here:
 - https://www.mathworks.com/products/matlab.html
