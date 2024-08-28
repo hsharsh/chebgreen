@@ -336,7 +336,7 @@ class GreenNN(ABC):
             device: A torch.device which specifies the device for the neural network.
         ----------------------------------------------------------------------------------------------------------------
         """
-        model = torch.load(loadPath+'/model.pth')
+        model = torch.load(loadPath+'/model.pth', weights_only=False)
         self.G = NN(numInputs = model['dimension']*2, numOutputs = model['dimension'], layerConfig = model['layerConfig'], activation = model['activation']).to(device)
         self.N = NN(numInputs = model['dimension'], numOutputs = model['dimension'], layerConfig = model['layerConfig'], activation = model['activation']).to(device)
         self.G.load_state_dict(model['G_state_dict'])

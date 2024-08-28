@@ -13,10 +13,10 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
 install_requires = [
-    "scipy",
-    "numpy",
-    "matplotlib",
-    "torch",
+    "scipy==1.14.1",
+    "numpy==2.1.0",
+    "matplotlib==3.9.2",
+    "torch==2.4.0",
 ]
 
 setup(

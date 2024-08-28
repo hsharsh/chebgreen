@@ -92,7 +92,7 @@ class ChebGreen(ABC):
                 print(f"Training greenlearning model for example \'{example}\' at Theta = {theta:.2f}")
                 lossHistory = model.train(data, savePath = GreenNNPath)
                 model.build(dimension = 1, domain = self.domain, dirichletBC = self.dirichletBC, loadPath = GreenNNPath)
-                with open(f"savedModels/{example}/settings.ini", 'w') as f:
+                with open(f"savedModels/{example}/{theta:.2f}/settings.ini", 'w') as f:
                     print_settings(file = f)
             
             print(f"Learning a chebfun model for example \'{example}\' at Theta = {theta:.2f}")

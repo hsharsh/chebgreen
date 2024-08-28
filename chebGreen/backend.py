@@ -19,9 +19,10 @@ chebgreen_path = Path(str(files(chebgreen)))
 
 # Read the settings.ini file
 if os.path.isfile('settings.ini'):
+    print(f'Loading settings from {os.getcwd()}/settings.ini.')
     parser.read('settings.ini')
 else:
-    print('Loading settings.ini from the package.')
+    print('Loading settings from the package.')
     print('To use a custom settings.ini file, please place it in the current working directory.')
     path = str(files(chebgreen) / "settings.ini")
     parser.read(path)
@@ -82,7 +83,8 @@ def print_settings(file = None):
     """
     Print the settings from the settings.ini file
     """
-    print("ChebGreen settings:", file = file)
+    if not file:
+       print("ChebGreen settings:", file = file)
     for section in parser.sections():
         print(f"[{section}]", file = file)
         for item in parser.items(section):
@@ -90,6 +92,7 @@ def print_settings(file = None):
             print(f"{setting_name} = {value}", file = file)
         print('', file = file)
 
-    print(f"MATLAB Path = {MATLABPath}", file = file)
-    print(f"PyTorch device = {device}", file = file)
+    if not file:
+        print(f"MATLAB Path = {MATLABPath}", file = file)
+        print(f"PyTorch device = {device}", file = file)
     
