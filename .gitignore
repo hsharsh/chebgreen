@@ -1,0 +1,22 @@
+# Logs
+logs/*
+*.log
+
+# Caches
+__pycache__/
+
+# Distribution
+.Python
+build/
+.eggs/
+**.egg-info/
+
+
+# Saved models, data, plots
+savedModels/
+plots/
+datasets/
+
+# Temporary bash scripts
+*.sh
+

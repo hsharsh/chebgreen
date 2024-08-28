@@ -8,22 +8,25 @@ We use [chebpy](https://github.com/chebpy/chebpy) as a starting point to impleme
 
 ## Installation
 
-The recommended way of installing the stack used for runnings this code is in a conda environement:
+##### Create a virtual environment:
+```bash
+# create folder to hold all virtual environments (only once)
+$ mkdir -p ~/.venvs # 
+
+# create a new virtual environment for your work (only once)
+$ python3.11 -m venv ~/.venvs/myvenv
+
+# activate environment (before every session)
+$ source ~/.venvs/myvenv/bin/activate
+```
+
+##### Install the package
 
 ```bash
-conda create -n chebGreen
-conda activate chebGreen
+$ cd torchsupersede
 
-conda install jupyterlab
-
-# Install pytorch. Choose the appropriate conda installation here: https://pytorch.org/get-started/locally/
-# As an example, for me the installer is:
-conda install pytorch::pytorch torchvision torchaudio -c pytorch
-
-conda install scipy
-conda install numpy
-conda install matplotlib
-```
+# production installation
+$ pip install . -r requirements.txt
 
 The code uses **MATLAB** and the **MATLAB** library Chebfun to generate the datasets. Instructions for installation can be found here:
 - https://www.mathworks.com/products/matlab.html
