@@ -1,0 +1,7 @@
+*.pyc
+*.asv
+__pycache__/
+docs/_build/
+GreenLearning.egg-info/
+
+dist/
