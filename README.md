@@ -14,7 +14,7 @@ We use [chebpy](https://github.com/chebpy/chebpy) as a starting point to impleme
 $ mkdir -p ~/.venvs # 
 
 # create a new virtual environment for your work (only once)
-$ python3.11 -m venv ~/.venvs/myvenv
+$ python -m venv ~/.venvs/myvenv
 
 # activate environment (before every session)
 $ source ~/.venvs/myvenv/bin/activate
@@ -23,7 +23,7 @@ $ source ~/.venvs/myvenv/bin/activate
 ##### Install the package
 
 ```bash
-$ cd torchsupersede
+$ cd chebGreen
 
 # production installation
 $ pip install . -r requirements.txt
