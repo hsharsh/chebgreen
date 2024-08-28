@@ -1,7 +1,7 @@
-from .backend import os, sys, Path, MATLABPath, parser, np, tempfile, config, chebGreenPath
-from chebGreen.chebpy2.chebpy.core.algorithms import chebpts2, vals2coeffs2, standard_chop
-from chebGreen.chebpy2.chebpy.api import chebfun
-from chebGreen.chebpy2.chebpy.core.settings import ChebPreferences, _preferences
+from .backend import os, sys, Path, MATLABPath, parser, np, tempfile, config, chebgreen_path
+from chebgreen.chebpy2.chebpy.core.algorithms import chebpts2, vals2coeffs2, standard_chop
+from chebgreen.chebpy2.chebpy.api import chebfun
+from chebgreen.chebpy2.chebpy.core.settings import ChebPreferences, _preferences
 
 def runCustomScript(script      : str,
                     example     : str   = "data",
@@ -32,7 +32,7 @@ def runCustomScript(script      : str,
 
     # # Set the appropriate example name
     example = "\'"+example+"\'"
-    scriptsPath = chebGreenPath / "scripts"
+    scriptsPath = chebgreen_path / "scripts"
     examplesPath = scriptsPath / "examples"
 
     # Depending on the script type, define the appropriate MATLAB command

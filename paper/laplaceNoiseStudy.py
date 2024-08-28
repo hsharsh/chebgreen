@@ -1,11 +1,11 @@
-from chebGreen.greenlearning.utils import DataProcessor
-from chebGreen.greenlearning.model import *
-from chebGreen.backend import plt
-from chebGreen.utils import runCustomScript
+from chebgreen.greenlearning.utils import DataProcessor
+from chebgreen.greenlearning.model import *
+from chebgreen.backend import plt
+from chebgreen.utils import runCustomScript
 
-from chebGreen.chebpy2 import Chebfun2, Chebpy2Preferences
-from chebGreen.chebpy2.chebpy.core.settings import ChebPreferences
-from chebGreen.chebpy2.chebpy import chebfun, Chebfun
+from chebgreen.chebpy2 import Chebfun2, Chebpy2Preferences
+from chebgreen.chebpy2.chebpy.core.settings import ChebPreferences
+from chebgreen.chebpy2.chebpy import chebfun, Chebfun
 import shutil, time, sys
 
 def green(x,s):

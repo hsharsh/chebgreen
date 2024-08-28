@@ -1,4 +1,4 @@
-from chebGreen.backend import np, scipy
+from chebgreen.backend import np, scipy
 # Trapezoidal weights
 def trapezoidal(x):
     """Trapezoidal weights for trapezoidal rule integration."""

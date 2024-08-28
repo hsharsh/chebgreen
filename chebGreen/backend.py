@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 import os.path
 from importlib.resources import files
-import chebGreen
+import chebgreen
 
 # Greenlearning imports
 import torch, scipy
@@ -15,7 +15,7 @@ import torch, scipy
 parser = configparser.ConfigParser(inline_comment_prefixes="#")
 
 # Define the path to the chebGreen package
-chebGreenPath = Path(str(files(chebGreen)))
+chebgreen_path = Path(str(files(chebgreen)))
 
 # Read the settings.ini file
 if os.path.isfile('settings.ini'):
@@ -23,7 +23,7 @@ if os.path.isfile('settings.ini'):
 else:
     print('Loading settings.ini from the package.')
     print('To use a custom settings.ini file, please place it in the current working directory.')
-    path = str(files(chebGreen) / "settings.ini")
+    path = str(files(chebgreen) / "settings.ini")
     parser.read(path)
 
 # Define a configuration class for handling precision settings

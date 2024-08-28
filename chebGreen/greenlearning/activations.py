@@ -1,4 +1,4 @@
-from chebGreen.backend import torch, np, config, device
+from chebgreen.backend import torch, np, config, device
 
 class Rational(torch.nn.Module):
     """

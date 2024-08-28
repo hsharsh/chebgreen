@@ -1,10 +1,10 @@
-from chebGreen import ChebGreen
+from chebgreen import ChebGreen
 import numpy as np
 import matplotlib.pyplot as plt
 
-from chebGreen.chebpy2 import Quasimatrix
-from chebGreen.chebpy2.chebpy import chebfun
-from chebGreen.chebpy2 import Chebfun2
+from chebgreen.chebpy2 import Quasimatrix
+from chebgreen.chebpy2.chebpy import chebfun
+from chebgreen.chebpy2 import Chebfun2
 
 from pathlib import Path
 import shutil, time, sys

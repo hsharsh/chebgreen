@@ -23,7 +23,7 @@ $ source ~/.venvs/myvenv/bin/activate
 ##### Install the package
 
 ```bash
-$ cd chebGreen
+$ cd chebgreen
 
 # production installation
 $ pip install . -r requirements.txt
@@ -35,6 +35,6 @@ The code uses **MATLAB** and the **MATLAB** library Chebfun to generate the data
 
 ## Usage
 
-The package provides some **MATLAB** scripts in the ``scripts`` directory for data generation. One can also load a dataset generated from another simulation software or from experiments, the format for the datasets is specified in ``chebGreen/model.py``.
+The package provides some **MATLAB** scripts in the ``scripts`` directory for data generation. One can also load a dataset generated from another simulation software or from experiments, the format for the datasets is specified in ``chebgreen/model.py``.
 
 The examples of using the package to learn and interpolate Green's function from a given Partial Differential Equation is inside ``Jupyter`` notebooks in ``examples`` directory. It also provides important visualizations for the learned Green's function, and computes an empirical error.

@@ -1,4 +1,4 @@
-from chebGreen.backend import torch, np, ABC, config, device
+from chebgreen.backend import torch, np, ABC, config, device
 from .utils import generateEvaluationGrid, approximateDistanceFunction
 from .quadrature_weights import get_weights
 

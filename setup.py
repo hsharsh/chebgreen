@@ -21,11 +21,11 @@ install_requires = [
 
 setup(
     # metadata
-    name="chebGreen",
+    name="chebgreen",
     description="Python library for learning and interpolating Green's function for 1-Dimensional problems.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/hsharsh/chebGreen",
+    url="https://github.com/hsharsh/chebgreen",
     author="Harshwardhan Praveen",
     author_email="[praveenharsh01@gmail.com]",
     version="0.1.1",
@@ -34,7 +34,7 @@ setup(
     packages=find_packages(exclude=["datasets"]),
     package_data={
         # include MATLAB scripts in the package
-        "chebGreen": [
+        "chebgreen": [
             "scripts/examples/*.m",
             "scripts/*.m",
             "settings.ini",

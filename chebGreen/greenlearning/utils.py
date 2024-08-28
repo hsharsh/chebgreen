@@ -1,4 +1,4 @@
-from chebGreen.backend import torch, np, scipy, ABC, config, device, parser
+from chebgreen.backend import torch, np, scipy, ABC, config, device, parser
 
 class Dataset(torch.utils.data.Dataset):
     """ Dataset class for the Green's function approximation."""

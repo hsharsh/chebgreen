@@ -1,4 +1,4 @@
-from chebGreen.backend import torch, np, Path, ABC, config, device, parser, ast
+from chebgreen.backend import torch, np, Path, ABC, config, device, parser, ast
 from .activations import get_activation
 from .loss import LossGreensFunction
 from .utils import approximateDistanceFunction
