@@ -20,3 +20,6 @@ datasets/
 # Temporary bash scripts
 *.sh
 
+# MacOS
+.DS_Store
+

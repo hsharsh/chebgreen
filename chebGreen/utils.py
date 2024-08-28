@@ -1,4 +1,4 @@
-from .backend import os, sys, Path, MATLABPath, parser, np, tempfile, config, chebgreen_path
+from .backend import os, sys, Path, MATLABPath, parser, np, tempfile, config, chebgreen_path, print_settings
 from chebgreen.chebpy2.chebpy.core.algorithms import chebpts2, vals2coeffs2, standard_chop
 from chebgreen.chebpy2.chebpy.api import chebfun
 from chebgreen.chebpy2.chebpy.core.settings import ChebPreferences, _preferences
@@ -31,7 +31,7 @@ def runCustomScript(script      : str,
     sys.stdout.flush() # Flush the stdout buffer
 
     # # Set the appropriate example name
-    example = "\'"+example+"\'"
+    example_name = "\'"+example+"\'"
     scriptsPath = chebgreen_path / "scripts"
     examplesPath = scriptsPath / "examples"
 
@@ -40,18 +40,18 @@ def runCustomScript(script      : str,
         if saveSuffix is None:
             matlabcmd = " ".join(f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \
             \"addpath('{scriptsPath}'); addpath('{examplesPath}');\
-            {script}({example},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{seed}); exit;\" | tail -n +11".split())
+            {script}({example_name},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{seed}); exit;\" | tail -n +11".split())
         else:
             raise ValueError("saveSuffix cannot be provided for this script type.")
     else:
         if saveSuffix is not None:
             matlabcmd = " ".join(f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \
             \"addpath('{scriptsPath}'); addpath('{examplesPath}');\
-            {script}({example},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{seed},{theta:.2f},\'{saveSuffix}\'); exit;\" | tail -n +11".split())
+            {script}({example_name},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{seed},{theta:.2f},\'{saveSuffix}\'); exit;\" | tail -n +11".split())
         else:
             matlabcmd = " ".join(f"{MATLABPath} -nodisplay -nosplash -nodesktop -r \
             \"addpath('{scriptsPath}'); addpath('{examplesPath}');\
-            {script}({example},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{seed},{theta:.2f}); exit;\" | tail -n +11".split())
+            {script}({example_name},{int(Nsample)},{lmbda},{int(Nf)},{int(Nu)},{noise_level:.2f},{seed},{theta:.2f}); exit;\" | tail -n +11".split())
 
     # Write the MATLAB command to a temporary file and run it
     temp = next(tempfile._get_candidate_names()) + '.sh'
@@ -63,13 +63,16 @@ def runCustomScript(script      : str,
     os.remove(temp) # Remove the temporary file
     sys.stdout.flush() # Flush the stdout buffer
 
+    with open(f"datasets/{example}/{theta:.2f}/settings.ini", 'w') as f:
+        print_settings(file = f)
+
 def generateMatlabData(script: str, example: str, Theta: list = None):
     if Theta is None:
         runCustomScript(script, example) # Run the custom script without theta
     else:
         for theta in Theta:
             # Check if the dataset already exists
-            if Path(f"datasets/{example}/{theta:.2f}.mat").is_file():
+            if Path(f"datasets/{example}/{theta:.2f}/data.mat").is_file():
                 print(f"Dataset found for Theta = {theta:.2f}. Skipping dataset generation.")
                 continue
             sys.stdout.flush() # Flush the stdout buffer

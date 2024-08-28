@@ -78,19 +78,18 @@ else:
     device = torch.device('cpu')
 
 
-def print_settings():
+def print_settings(file = None):
     """
     Print the settings from the settings.ini file
     """
-    print()
-    print("ChebGreen settings:")
+    print("ChebGreen settings:", file = file)
     for section in parser.sections():
-        print(f"[{section}]")
+        print(f"[{section}]", file = file)
         for item in parser.items(section):
             setting_name, value = item
-            print(f"{setting_name} = {value}")
-        print()
+            print(f"{setting_name} = {value}", file = file)
+        print('', file = file)
 
-    print(f"MATLAB Path = {MATLABPath}")
-    print(f"PyTorch device = {device}")
+    print(f"MATLAB Path = {MATLABPath}", file = file)
+    print(f"PyTorch device = {device}", file = file)
     

@@ -12,4 +12,5 @@ __all__ = [
     "print_settings",
     ]
 
+print()
 print_settings()

@@ -152,26 +152,18 @@ function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, se
     % Save the data
     formatSpec = '%.2f';
     if nargin > 8
-        savePath = sprintf('datasets/%s-%s',example_name, varargin{1});
+        savePath = sprintf('datasets/%s/%s-%s',example_name, num2str(theta,formatSpec), varargin{1});
     else
-        savePath = sprintf('datasets/%s',example_name);
+        savePath = sprintf('datasets/%s/%s',example_name,num2str(theta,formatSpec));
     end
     if ~exist(savePath, 'dir')
         mkdir(savePath);
     end
 
-    if nargin > 7
-        if exist("ExactGreen")
-            save(sprintf('%s/%s.mat',savePath,num2str(theta,formatSpec)),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
-        else
-            save(sprintf('%s/%s.mat',savePath,num2str(theta,formatSpec)),"X","Y","U","F","U_hom","XG","YG")
-        end
+    if exist("ExactGreen")
+        save(sprintf('%s/data.mat',savePath),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
     else
-        if exist("ExactGreen")
-            save(sprintf('%s/data.mat',savePath),"X","Y","U","F","U_hom","XG","YG","ExactGreen")
-        else
-            save(sprintf('%s/data.mat',savePath),"X","Y","U","F","U_hom","XG","YG")
-        end
+        save(sprintf('%s/data.mat',savePath),"X","Y","U","F","U_hom","XG","YG")
     end
     
     % Plot the training data

@@ -3,7 +3,7 @@ from .greenlearning.model import GreenNN
 from .chebpy2 import Chebfun2, Chebpy2Preferences, Quasimatrix
 from .chebpy2.chebpy import chebfun, Chebfun
 from .chebpy2.chebpy.core.settings import ChebPreferences
-from .backend import os, sys, Path, np, ABC, MATLABPath, parser, ast, config
+from .backend import os, sys, Path, np, ABC, MATLABPath, parser, ast, config, print_settings
 from .utils import generateMatlabData, computeEmpiricalError
 
 class ChebGreen(ABC):
@@ -61,7 +61,6 @@ class ChebGreen(ABC):
         if generateData: 
             print(f"Generating dataset for example \'{example}\'")
             self.datapath = generateMatlabData(script, example, self.Theta)
-            os.system(f'cp settings.ini datasets/{example}/settings.ini')
         else:
             print(f"Loading dataset at {datapath}")
             assert datapath is not None, "No datapath specified!"
@@ -81,19 +80,20 @@ class ChebGreen(ABC):
         self.N = {}
         for theta in self.Theta:
             
-            GreenNNPath = "savedModels/" + example + f"/{theta:.2f}"
+            GreenNNPath = "savedModels/" + example + f"/{theta:.2f}" 
             
             if model.checkSavedModels(loadPath = GreenNNPath):          # Check for stored models
                 print(f"Found saved model, Loading model for example \'{example}\' at Theta = {theta:.2f}")
                 model.build(dimension = 1, domain = self.domain, dirichletBC = self.dirichletBC, loadPath = GreenNNPath)
             else:
-                data = DataProcessor(self.datapath + f"/{theta:.2f}.mat")
+                data = DataProcessor(self.datapath + f"/{theta:.2f}/data.mat")
                 data.generateDataset(trainRatio = 0.95)
                 model.build(dimension = 1, domain = self.domain, dirichletBC = self.dirichletBC)
                 print(f"Training greenlearning model for example \'{example}\' at Theta = {theta:.2f}")
                 lossHistory = model.train(data, savePath = GreenNNPath)
                 model.build(dimension = 1, domain = self.domain, dirichletBC = self.dirichletBC, loadPath = GreenNNPath)
-                os.system(f'cp settings.ini savedModels/{example}/settings.ini')
+                with open(f"savedModels/{example}/settings.ini", 'w') as f:
+                    print_settings(file = f)
             
             print(f"Learning a chebfun model for example \'{example}\' at Theta = {theta:.2f}")
             self.G[float(theta)] = (Chebfun2(model.evaluateG, domain = self.domain, prefs = Chebpy2Preferences(), simplify = True))
@@ -129,7 +129,7 @@ class ChebGreen(ABC):
             return computeEmpiricalError(data, G, N)
 
         assert self.datapath is not None, "Cannot find the datapath for the model datasets!"
-        data = DataProcessor(self.datapath + f"/{theta:.2f}.mat")
+        data = DataProcessor(self.datapath + f"/{theta:.2f}/data.mat")
         data.generateDataset(trainRatio = 0.95)
 
         return computeEmpiricalError(data, G, N)
