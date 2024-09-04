@@ -5,16 +5,17 @@ from .chebpy2.chebpy import chebfun, Chebfun
 from .chebpy2.chebpy.core.settings import ChebPreferences
 from .backend import os, sys, Path, np, ABC, MATLABPath, parser, ast, config, print_settings
 from .utils import generateMatlabData, computeEmpiricalError
+from typing import Optional, List, Dict, Tuple
 
 class ChebGreen(ABC):
     def __init__(self,
-                Theta           : np.array,
-                domain          : list = [0, 1, 0, 1],
+                Theta           : np.ndarray,
+                domain          : List = [0, 1, 0, 1],
                 generateData    : bool = True,
                 script          : str = "generate_example",
-                example         : str = None,
-                dirichletBC    : bool = True,
-                datapath        : str = None
+                example         : Optional[str] = None,
+                dirichletBC     : Optional[bool] = True,
+                datapath        : Optional[str] = None
                 ):
         super().__init__()
         """
@@ -74,7 +75,7 @@ class ChebGreen(ABC):
         self.interpG = {}
         self.interpN = {}
 
-    def generateChebfun2Models(self, example):
+    def generateChebfun2Models(self, example: str) -> None:
         model = GreenNN()
         self.G = {}
         self.N = {}
@@ -110,12 +111,12 @@ class ChebGreen(ABC):
             self.G[theta].truncate(maxRank)
 
         
-    def generateNewModel(self, theta):
+    def generateNewModel(self, theta: float) -> Chebfun2:
         if theta not in list(self.interpG.keys()):
             self.interpG[theta], self.interpN[theta] = modelInterp(self.G, self.N, theta)
         return self.interpG[theta], self.interpN[theta]
     
-    def computeEmpiricalError(self, theta, data = None):        
+    def computeEmpiricalError(self, theta: float, data: Optional[DataProcessor] = None) -> float:        
         if theta in list(self.interpG.keys()):
             G = self.interpG[theta]
             N = self.interpN[theta]
@@ -135,7 +136,7 @@ class ChebGreen(ABC):
         return computeEmpiricalError(data, G, N)
             
 
-def computeInterpCoeffs(interpParams : list, targetParam: float) -> np.array:
+def computeInterpCoeffs(interpParams : List[float], targetParam: float) -> np.ndarray:
     """Computes the interpolation coefficients (based on fitting Lagrange polynomials) for performing interpolation,
     when the parameteric space is 1D. Note that the function takes in parameters of any dimnesions
 
@@ -164,7 +165,7 @@ def computeInterpCoeffs(interpParams : list, targetParam: float) -> np.array:
 
     return interpCoeffs
 
-def computeOrderSigns(R0: Quasimatrix, R1: Quasimatrix) -> tuple([np.array, np.array]):
+def computeOrderSigns(R0: Quasimatrix, R1: Quasimatrix) -> Tuple[np.ndarray, np.ndarray]:
     """ Given two orthonormal matrices R0 and R1, this function computes the "correct" ordering and signs of the columns
     (modes) of R1 using R0 as a reference. The assumption is that these are orthonormal matrices, the columns of which
     are eigenmodes of systems which are close to each other and hence the eigenmodes will close to each other as well.
@@ -216,7 +217,7 @@ def computeOrderSigns(R0: Quasimatrix, R1: Quasimatrix) -> tuple([np.array, np.a
     
     return order, signs
 
-def modelInterp(interpSet: dict[float,Chebfun2], interpSetHom: dict[float,Chebfun], targetParam: float) -> Chebfun2:
+def modelInterp(interpSet: Dict[float,Chebfun2], interpSetHom: Dict[float,Chebfun], targetParam: float) -> Chebfun2:
     """
     Interpolation for the models. The left and right singular functions are interpolated in the tangent space of
     (L^2(domain))^K (K is the model rank) using a QR based retraction map. The singular values are interpolated
@@ -291,7 +292,7 @@ def modelInterp(interpSet: dict[float,Chebfun2], interpSetHom: dict[float,Chebfu
     Vn, _ = (V0 + V_).qr()
     
     # Match the order and signs with the origin
-    order, signs = computeOrderSigns(U0,Uc)
+    order, signs = computeOrderSigns(U0,Un)
     Un = Un[:,order] * np.diag(signs)
     Sn = S_[order]
     Vtn = (Vn[:,order] * np.diag(signs)).T

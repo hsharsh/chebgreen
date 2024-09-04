@@ -1,18 +1,21 @@
 from .backend import os, sys, Path, MATLABPath, parser, np, tempfile, config, chebgreen_path, print_settings
 from chebgreen.chebpy2.chebpy.core.algorithms import chebpts2, vals2coeffs2, standard_chop
-from chebgreen.chebpy2.chebpy.api import chebfun
+from chebgreen.chebpy2.chebpy.api import chebfun, Chebfun
+from chebgreen.chebpy2 import Chebfun2
+from chebgreen.greenlearning.utils import DataProcessor
 from chebgreen.chebpy2.chebpy.core.settings import ChebPreferences, _preferences
+from typing import Optional, List
 
 def runCustomScript(script      : str,
                     example     : str   = "data",
-                    theta       : float  = None,
-                    Nsample     : int   = parser['MATLAB'].getint('Nsample'),
-                    lmbda       : int   = parser['MATLAB'].getfloat('lambda'),
-                    Nf          : int   = parser['MATLAB'].getint('Nf'),
-                    Nu          : int   = parser['MATLAB'].getint('Nu'),
+                    theta       : Optional[float]  = None,
+                    Nsample     : int  = parser['MATLAB'].getint('Nsample'),
+                    lmbda       : int  = parser['MATLAB'].getfloat('lambda'),
+                    Nf          : int  = parser['MATLAB'].getint('Nf'),
+                    Nu          : int  = parser['MATLAB'].getint('Nu'),
                     noise_level : float = parser['MATLAB'].getfloat('noise'),
-                    seed        : int   = 0,
-                    saveSuffix  : str   = None):
+                    seed        : int  = 0,
+                    saveSuffix  : Optional[str]   = None) -> None:
     """
     Arguments:
     script: Name of the matlab script to run
@@ -66,7 +69,7 @@ def runCustomScript(script      : str,
     with open(f"datasets/{example}/{theta:.2f}/settings.ini", 'w') as f:
         print_settings(file = f)
 
-def generateMatlabData(script: str, example: str, Theta: list = None):
+def generateMatlabData(script: str, example: str, Theta: Optional[List] = None) -> str:
     if Theta is None:
         runCustomScript(script, example) # Run the custom script without theta
     else:
@@ -81,7 +84,7 @@ def generateMatlabData(script: str, example: str, Theta: list = None):
     sys.stdout.flush() # Flush the stdout buffer
     return os.path.abspath(f"datasets/{example}") # Return the path to the dataset
 
-def vec2cheb(f, x, domain = None):
+def vec2cheb(f: np.ndarray, x: np.ndarray, domain: Optional[List] = None) -> Chebfun:
     f = f.reshape((-1))
     x = x.reshape((-1))
     if domain is None:
@@ -114,8 +117,8 @@ def vec2cheb(f, x, domain = None):
     cbfun = chebfun(coeffs_fc[:npts].reshape(-1,1), domain, prefs = prefs, initcoeffs = True)
     return cbfun
 
-def computeEmpiricalError(data, G, N = None):
-    RE, UC, U0 = [],[],[]
+def computeEmpiricalError(data: DataProcessor, G: Chebfun2, N: Optional[Chebfun] = None) -> float:
+    RE = []
     if N is None:
         print('Assuming a zero homogeneous solution.')
     for i in range(data.valDataset[1].cpu().numpy().shape[0]):
