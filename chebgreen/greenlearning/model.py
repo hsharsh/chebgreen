@@ -147,10 +147,14 @@ class GreenNN(ABC):
             params = list(self.G.parameters()) + list(self.N.parameters())
         else:
             params = list(self.G.parameters())
-        self.optimizerAdam = torch.optim.Adam(params, lr = parser['GREENLEARNING'].getfloat('initLearningRate'))
-        self.schedulerAdam = torch.optim.lr_scheduler.StepLR(self.optimizerAdam,
-                                                            step_size = parser['GREENLEARNING'].getint('stepSize'),
-                                                            gamma = parser['GREENLEARNING'].getfloat('decayRate'))
+        initial_learning_rate = parser['GREENLEARNING'].getfloat('initLearningRate')
+        self.optimizerAdam = torch.optim.Adam(params, lr = initial_learning_rate)
+        final_learning_rate = parser['GREENLEARNING'].getfloat('finalLearningRate')
+        gamma = np.exp(np.log(final_learning_rate / initial_learning_rate) / epochs['adam'])
+        self.schedulerAdam = torch.optim.lr_scheduler.ExponentialLR(self.optimizerAdam, gamma=gamma)
+        # self.schedulerAdam = torch.optim.lr_scheduler.StepLR(self.optimizerAdam,
+        #                                                     step_size = parser['GREENLEARNING'].getint('stepSize'),
+        #                                                     gamma = parser['GREENLEARNING'].getfloat('decayRate'))
                                                             
         self.optimizerLBFGS = torch.optim.LBFGS(params, lr = parser['GREENLEARNING'].getfloat('initLearningRate'))
 

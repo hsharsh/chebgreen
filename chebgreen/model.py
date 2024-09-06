@@ -3,7 +3,7 @@ from .greenlearning.model import GreenNN
 from .chebpy2 import Chebfun2, Chebpy2Preferences, Quasimatrix
 from .chebpy2.chebpy import chebfun, Chebfun
 from .chebpy2.chebpy.core.settings import ChebPreferences
-from .backend import os, sys, Path, np, ABC, MATLABPath, parser, ast, config, print_settings
+from .backend import os, sys, Path, np, ABC, MATLABPath, parser, ast, config, print_settings, plt
 from .utils import generateMatlabData, computeEmpiricalError
 from typing import Optional, List, Dict, Tuple
 
@@ -95,6 +95,21 @@ class ChebGreen(ABC):
                 model.build(dimension = 1, domain = self.domain, dirichletBC = self.dirichletBC, loadPath = GreenNNPath)
                 with open(f"savedModels/{example}/{theta:.2f}/settings.ini", 'w') as f:
                     print_settings(file = f)
+
+                plt.figure(figsize=(8, 6))
+                plt.semilogy(range(1, len(lossHistory['training']) + 1), lossHistory['training'], label='Training')
+                plt.semilogy(range(1, len(lossHistory['validation']) + 1), lossHistory['validation'], label='Validation')
+                plt.xlabel('Epochs')
+                plt.ylabel('Loss')
+                plt.title(f'Loss History for Theta = {theta:.2f}')
+                plt.legend()
+                plt.grid(True)
+                plt.tight_layout()
+                
+                # Save the plot in the same folder as settings.ini
+                plot_path = f"savedModels/{example}/{theta:.2f}/loss_history.png"
+                plt.savefig(plot_path)
+                plt.close()
             
             print(f"Learning a chebfun model for example \'{example}\' at Theta = {theta:.2f}")
             self.G[float(theta)] = (Chebfun2(model.evaluateG, domain = self.domain, prefs = Chebpy2Preferences(), simplify = True))
