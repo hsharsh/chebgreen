@@ -2,8 +2,9 @@
 logs/*
 *.log
 
-# Caches
+# Caches/Checkpoints
 __pycache__/
+.ipynb_checkpoints/
 
 # Distribution
 .Python
