@@ -53,8 +53,8 @@ class DataProcessor(ABC):
         iSplit = int(trainRatio*data['F'].shape[1])
         Train_Indices, Test_Indices = TrainTestIndices[:iSplit], TrainTestIndices[iSplit:]
         
-        self.trainDataset = (F[:,Train_Indices].T, U[:,Train_Indices].T).to(device)
-        self.valDataset = (F[:,Test_Indices].T, U[:,Test_Indices].T).to(device)
+        self.trainDataset = (F[:,Train_Indices].T, U[:,Train_Indices].T)
+        self.valDataset = (F[:,Test_Indices].T, U[:,Test_Indices].T)
 
 def generateEvaluationGrid(xU, xF):
     """
