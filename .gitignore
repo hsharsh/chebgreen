@@ -23,3 +23,8 @@ datasets/
 # MacOS
 .DS_Store
 
+# Virtual environments
+.venv/
+.venvs/
+.envs/
+
