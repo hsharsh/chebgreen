@@ -30,7 +30,8 @@ function generate_fractional(example_name, Nsample, lambda, Nf, Nu, noise_level,
     
     % Define the Gaussian process kernel
     domain_length = dom(end) - dom(1);
-    K = chebfun2(@(x,y)exp(-2*sin(pi*abs(x-y)/domain_length).^2/lambda^2), [dom,dom], 'trig');
+    sigma = domain_length*lambda;
+    K = chebfun2(@(x,y)exp(-2*sin(pi*abs(x-y)/domain_length).^2/sigma^2), [dom,dom], 'trig');
 
     % Compute the Cholesky factorization of K
     L = chol(K, 'lower');
@@ -92,6 +93,8 @@ function generate_fractional(example_name, Nsample, lambda, Nf, Nu, noise_level,
         U(:,i,:) = u(X);
         F(:,i,:) = rhs(Y);
     end
+    
+    disp(['Forcing functions represented by ', num2str(length(f)), ' chebyshev points.'])
     
     % Compute homogeneous solution
     f = chebfun(@(x) 0*x, dom, 'trig');

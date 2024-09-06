@@ -71,12 +71,17 @@ else:
     raise('Operating system not supported. Please set MATLABPath manually.')
 
 # Set the appropriate compute acceleration, default to CPU if nothing is available
-if torch.backends.mps.is_available():
-    device = torch.device('mps')
-elif torch.cuda.is_available():
-    device = torch.device('cuda:0')
+if parser.has_option('GENERAL', 'device'):
+    dev = parser['GENERAL']['device']
+    assert(dev in ['cpu', 'mps'] or dev.startswith('cuda'), 'Invalid device for torch.')
+    device = torch.device(dev)
 else:
-    device = torch.device('cpu')
+    if torch.backends.mps.is_available():
+        device = torch.device('mps')
+    elif torch.cuda.is_available():
+        device = torch.device('cuda:0')
+    else:
+        device = torch.device('cpu')
 
 
 def print_settings(file = None):

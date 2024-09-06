@@ -73,10 +73,11 @@ function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, se
     
     % Define the Gaussian process kernel
     domain_length = dom(end) - dom(1);
+    sigma = domain_length*lambda;
     if strcmp(diff_op.bc,'periodic')
-        K = chebfun2(@(x,y)exp(-2*sin(pi*abs(x-y)/domain_length).^2/lambda^2), [dom,dom], 'trig');
+        K = chebfun2(@(x,y)exp(-2*sin(pi*abs(x-y)/domain_length).^2/sigma^2), [dom,dom], 'trig');
     else
-        K = chebfun2(@(x,y)exp(-(x-y).^2/(2*domain_length^2*lambda^2)), [dom,dom]);
+        K = chebfun2(@(x,y)exp(-(x-y).^2/(2*sigma^2)), [dom,dom]);
     end
     % Compute the Cholesky factorization of K
     L = chol(K, 'lower');
@@ -124,7 +125,9 @@ function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, se
         U(:,i,:) = u(X);
         F(:,i,:) = rhs(Y);
     end
-    
+
+    disp(['Forcing functions represented by ', num2str(length(f)), ' chebyshev points.'])
+
     % Compute homogeneous solution
     u_hom = solvebvp(diff_op, 0, options);
     

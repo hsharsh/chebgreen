@@ -196,7 +196,7 @@ class GreenNN(ABC):
         print("Training with LBFGS:")
         for epoch in range(int(epochs['lbfgs'])):
             fTrain, uTrain = data.trainDataset
-            fTrain, uTrain = fTrain.to(device), uTrain.to(device)
+            fTrain, uTrain = fTrain, uTrain
             self.G.train()
             self.N.train()
 

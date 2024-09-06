@@ -28,12 +28,13 @@ class DataProcessor(ABC):
         self.seed = seed
         
     
-    def generateDataset(self, trainRatio = parser['GREENLEARNING'].getfloat('trainRatio')):
+    def generateDataset(self, trainRatio = parser['GREENLEARNING'].getfloat('trainRatio'), device = device):
         """
         Method to generate the training and validation datasets.
         ----------------------------------------------------------------------------------------------------------------
         Arguments:
             trainRatio: A float which specifies the ratio of training data to the total data.
+            device: A torch.device object which specifies the device to store the data.
         ----------------------------------------------------------------------------------------------------------------
         """
         data = scipy.io.loadmat(self.filePath)
@@ -52,8 +53,8 @@ class DataProcessor(ABC):
         iSplit = int(trainRatio*data['F'].shape[1])
         Train_Indices, Test_Indices = TrainTestIndices[:iSplit], TrainTestIndices[iSplit:]
         
-        self.trainDataset = (F[:,Train_Indices].T, U[:,Train_Indices].T)
-        self.valDataset = (F[:,Test_Indices].T, U[:,Test_Indices].T)
+        self.trainDataset = (F[:,Train_Indices].T, U[:,Train_Indices].T).to(device)
+        self.valDataset = (F[:,Test_Indices].T, U[:,Test_Indices].T).to(device)
 
 def generateEvaluationGrid(xU, xF):
     """
