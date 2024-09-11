@@ -5,6 +5,7 @@ from .preferences import Chebpy2Preferences
 from .quasimatrix import Quasimatrix
 from .chebpy.core.plotting import import_plt
 from copy import deepcopy
+import warnings
 
 class Chebfun2(ABC):
     def __init__(self, g, domain = None, prefs = Chebpy2Preferences(), simplify = False, vectorize = False):
@@ -159,7 +160,25 @@ class Chebfun2(ABC):
             # If the rank of the function is above maxRank then stop.
             if (grid > factor*(maxRank-1)+1).any():
                 failure = 1
-                raise RuntimeWarning('CHEBFUN:CHEBFUN2:constructor:rank, Not a low-rank function.')
+
+                # raise RuntimeWarning('Chebpy2:Chebfun2:constructor:rank, Not a low-rank function.')
+                warnings.warn('Chebpy2:Chebfun2:constructor:rank, Not a low-rank function.')
+                
+                if np.linalg.norm(colVals) == 0 or np.linalg.norm(rowVals) == 0:
+                    colVals = 0
+                    rowVals = 0
+                    pivotVal = np.inf
+                    pivotPos = np.array([0,0])
+                    isHappy = 1
+
+                cols = Quasimatrix(data = chebpy.chebfun(colVals, domain = np.array(self.domain[2:]), prefs = prefy), transposed = False) 
+                rows = Quasimatrix(data = chebpy.chebfun(rowVals.T, domain = np.array(self.domain[:2]), prefs = prefx), transposed = True)
+                pivotValues = pivotVal
+                pivotLocations = pivotPos
+
+                # Write a Sample Test
+                
+                return cols, rows, pivotValues, pivotLocations
             
             # Check if the column and row slices are resolved. Hardcoded for Chebtech2
             colTech = chebpy.core.chebtech.Chebtech2.initvalues(values = np.sum(colVals,axis = 1), interval = self.domain[2:])

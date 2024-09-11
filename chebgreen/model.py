@@ -112,7 +112,12 @@ class ChebGreen(ABC):
                 plt.close()
             
             print(f"Learning a chebfun model for example \'{example}\' at Theta = {theta:.2f}")
-            self.G[float(theta)] = (Chebfun2(model.evaluateG, domain = self.domain, prefs = Chebpy2Preferences(), simplify = True))
+            prefs = Chebpy2Preferences()
+            if parser.has_option('CHEBFUN', 'eps_x'):
+                prefs.prefx.eps = parser['CHEBFUN'].getfloat('eps_x')
+            if parser.has_option('CHEBFUN', 'eps_y'):
+                prefs.prefy.eps = parser['CHEBFUN'].getfloat('eps_y')
+            self.G[float(theta)] = (Chebfun2(model.evaluateG, domain = self.domain, prefs = prefs, simplify = True))
             print(f"Chebfun model added for example \'{example}\' at Theta = {theta:.2f}\n")
 
             # Store the homogeneous solution
