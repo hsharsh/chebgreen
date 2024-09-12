@@ -5,6 +5,8 @@ from chebgreen.chebpy2 import Chebfun2
 from chebgreen.greenlearning.utils import DataProcessor
 from chebgreen.chebpy2.chebpy.core.settings import ChebPreferences, _preferences
 from typing import Optional, List
+import matplotlib.pyplot as plt
+from scipy.io import loadmat
 
 def runCustomScript(script      : str,
                     example     : str   = "data",
@@ -66,6 +68,7 @@ def runCustomScript(script      : str,
     os.remove(temp) # Remove the temporary file
     sys.stdout.flush() # Flush the stdout buffer
 
+    plot_random_sample(example, theta, saveSuffix) # Plot a random sample from the dataset
     with open(f"datasets/{example}/{theta:.2f}/settings.ini", 'w') as f:
         print_settings(file = f)
 
@@ -148,3 +151,56 @@ def computeEmpiricalError(data: DataProcessor, G: Chebfun2, N: Optional[Chebfun]
     
     error = np.mean([re.sum() for re in RE])
     return error
+
+# Load and plot data from the generated .mat file
+def plot_random_sample(example, theta=None, saveSuffix=None):
+
+    # Construct the path to the data file
+    if theta is None:
+        data_path = f"datasets/{example}/data.mat"
+    else:
+        if saveSuffix:
+            data_path = f"datasets/{example}/{theta:.2f}-{saveSuffix}/data.mat"
+        else:
+            data_path = f"datasets/{example}/{theta:.2f}/data.mat"
+
+    # Load the .mat file
+    data = loadmat(data_path)
+
+    # Extract the required arrays
+    U = data['U']
+    F = data['F']
+    X = data['X'].flatten()
+    Y = data['Y'].flatten()
+
+    # Choose a random column
+    random_col = np.random.randint(0, U.shape[1])
+
+    # Create the plot
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Plot F vs Y
+    ax1.plot(Y, F[:, random_col])
+    ax1.set_title('Forcing Function (F)')
+    ax1.set_xlabel('s')
+    ax1.set_ylabel('F')
+
+    # Plot U vs X
+    ax2.plot(X, U[:, random_col])
+    ax2.set_title('System Response (U)')
+    ax2.set_xlabel('x')
+    ax2.set_ylabel('U')
+
+    # Set the main title
+    if theta is None:
+        fig.suptitle(f'Random Sample from {example}')
+    else:
+        fig.suptitle(f'Random Sample from {example} ($\\theta = {{{theta:.2f}}}$)')
+
+    plt.tight_layout()
+
+    # Save the plot in the same directory as the data
+    save_dir = os.path.dirname(data_path)
+    save_path = os.path.join(save_dir, 'random_sample.png')
+    plt.savefig(save_path)
+    plt.close(fig)

@@ -59,13 +59,13 @@ def main(example):
     lmbda = 0.01
     Nf = 500
     Nu = 500
-    noise_level = 0.1
+    noise_level = 0
     seed = 42
     saveSuffix = "validation"
 
     Error = []
     for theta in Theta:
-        datapath = f"datasets/{example}-{saveSuffix}/{theta:.2f}.mat"
+        datapath = f"datasets/{example}/{theta:.2f}-{saveSuffix}/data.mat"
         if Path(datapath).is_file():
             print(f"Test dataset already present for Theta = {theta:.2f}")
         else:
@@ -77,7 +77,7 @@ def main(example):
         Error.append(error)
         print(f"Empirical error for model at Theta = {theta:.2f} is {error}")
 
-    datapath = f"datasets/{example}-{saveSuffix}/{theta_:.2f}.mat"
+    datapath = f"datasets/{example}/{theta:.2f}-{saveSuffix}/data.mat"
     if Path(datapath).is_file():
         print(f"Test dataset already present for Theta = {theta_:.2f}")
     else:
@@ -91,7 +91,7 @@ def main(example):
     error = validation.computeEmpiricalError(theta_, data)
     print(f"Empirical error for validation model at Theta = {theta_:.2f} is {error}")
     Error.append(error)
-    shutil.rmtree(f"datasets/{example}-{saveSuffix}")
+    shutil.rmtree(f"datasets/{example}/{theta:.2f}-{saveSuffix}")
 
     return np.array(Error)
 

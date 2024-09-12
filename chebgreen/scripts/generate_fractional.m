@@ -127,7 +127,7 @@ function generate_fractional(example_name, Nsample, lambda, Nf, Nu, noise_level,
     U_hom = u_hom(X);
     
     % Add Gaussian noise to the solution
-    U = U.*(1 + noise_level*randn(size(U)));
+    U = U + (noise_level*randn(size(U)) .* mean(abs(U)));
 
     % Save the data
     formatSpec = '%.2f';

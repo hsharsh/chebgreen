@@ -150,7 +150,7 @@ function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, se
     end
     
     % Add Gaussian noise to the solution
-    U = U.*(1 + noise_level*randn(size(U)));
+    U = U + (noise_level*randn(size(U)) .* mean(abs(U)));
 
     % Save the data
     formatSpec = '%.2f';
