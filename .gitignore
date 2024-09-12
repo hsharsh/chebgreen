@@ -14,9 +14,9 @@ build/
 
 
 # Saved models, data, plots
-savedModels/
-plots/
-datasets/
+savedModels*/
+plots*/
+datasets*/
 
 # Temporary bash scripts
 *.sh
