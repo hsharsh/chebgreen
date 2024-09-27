@@ -13,7 +13,7 @@ def green(x,s):
     g = (x <= s) * (x * (1-s)) + (x > s) * (s * (1-x))
     return g
 
-noise_levels = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+noise_levels = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
 example = 'laplace'
 script = 'generate_example'
@@ -53,12 +53,14 @@ for noise_level in noise_levels:
 
     print("-------------------------------------------------------------------------------")
     print(f"Training greenlearning model for example \'{example}\' with {noise_level*100}% noise")
-    lossHistory = model.train(data, epochs = {'adam':int(5000), 'lbfgs':int(0)})
+    lossHistory = model.train(data, epochs = {'adam':int(2000), 'lbfgs':int(0)})
 
     xF, xU = data.xF, data.xU
     x, y = np.meshgrid(xU, xF)
     G = model.evaluateG(x,y)
     N = model.evaluateN(data.xF)
+    GreenNNPath = "temp/"
+    model.build(dimension = dimension,domain = domain, dirichletBC = dirichletBC, loadPath = GreenNNPath, device = torch.device('cpu'))
 
     savePath = f"plots/{example}"
     Path(savePath).mkdir(parents=True, exist_ok=True)

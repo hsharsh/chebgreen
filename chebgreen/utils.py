@@ -67,10 +67,15 @@ def runCustomScript(script      : str,
     os.system(f"bash {temp}") # Run the temporary file
     os.remove(temp) # Remove the temporary file
     sys.stdout.flush() # Flush the stdout buffer
-
+    
     plot_random_sample(example, theta, saveSuffix) # Plot a random sample from the dataset
-    with open(f"datasets/{example}/{theta:.2f}/settings.ini", 'w') as f:
-        print_settings(file = f)
+
+    if theta is None:
+        with open(f"datasets/{example}/settings.ini", 'w') as f:
+            print_settings(file = f)
+    else:
+        with open(f"datasets/{example}/{theta:.2f}/settings.ini", 'w') as f:
+            print_settings(file = f)
 
 def generateMatlabData(script: str, example: str, Theta: Optional[List] = None) -> str:
     if Theta is None:

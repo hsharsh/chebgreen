@@ -154,10 +154,12 @@ function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, se
 
     % Save the data
     formatSpec = '%.2f';
-    if nargin > 8
+    if nargin > 9
         savePath = sprintf('datasets/%s/%s-%s',example_name, num2str(theta,formatSpec), varargin{1});
-    else
+    elseif nargin > 8
         savePath = sprintf('datasets/%s/%s',example_name,num2str(theta,formatSpec));
+    else
+        savePath = sprintf('datasets/%s/%s',example_name);
     end
     if ~exist(savePath, 'dir')
         mkdir(savePath);

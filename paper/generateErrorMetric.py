@@ -76,8 +76,9 @@ def main(example):
         error = model.computeEmpiricalError(theta, data)
         Error.append(error)
         print(f"Empirical error for model at Theta = {theta:.2f} is {error}")
-
-    datapath = f"datasets/{example}/{theta:.2f}-{saveSuffix}/data.mat"
+        shutil.rmtree(f"datasets/{example}/{theta:.2f}-{saveSuffix}")
+        
+    datapath = f"datasets/{example}/{theta_:.2f}-{saveSuffix}/data.mat"
     if Path(datapath).is_file():
         print(f"Test dataset already present for Theta = {theta_:.2f}")
     else:
@@ -91,7 +92,7 @@ def main(example):
     error = validation.computeEmpiricalError(theta_, data)
     print(f"Empirical error for validation model at Theta = {theta_:.2f} is {error}")
     Error.append(error)
-    shutil.rmtree(f"datasets/{example}/{theta:.2f}-{saveSuffix}")
+    shutil.rmtree(f"datasets/{example}/{theta_:.2f}-{saveSuffix}")
 
     return np.array(Error)
 
