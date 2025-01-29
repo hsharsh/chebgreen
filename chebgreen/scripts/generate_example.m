@@ -154,9 +154,9 @@ function generate_example(example_name, Nsample, lambda, Nf, Nu, noise_level, se
 
     % Save the data
     formatSpec = '%.2f';
-    if nargin > 9
+    if nargin > 8
         savePath = sprintf('datasets/%s/%s-%s',example_name, num2str(theta,formatSpec), varargin{1});
-    elseif nargin > 8
+    elseif nargin >= 7
         savePath = sprintf('datasets/%s/%s',example_name,num2str(theta,formatSpec));
     else
         savePath = sprintf('datasets/%s/%s',example_name);
