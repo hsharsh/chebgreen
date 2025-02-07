@@ -10,14 +10,14 @@ We use [chebpy](https://github.com/chebpy/chebpy) as a starting point to impleme
 
 ##### Create a virtual environment:
 ```bash
-# create folder to hold all virtual environments (only once)
+# Create folder for the virtual environment or if you already have an existing folder skip this step.
 $ mkdir -p ~/.venvs # 
 
-# create a new virtual environment for your work (only once)
-$ python -m venv ~/.venvs/myvenv
+# Create a new virtual environment for the chebgreen package.
+$ python -m venv ~/.venvs/chebgreen
 
-# activate environment (before every session)
-$ source ~/.venvs/myvenv/bin/activate
+# Activate environment (every time you want to use the package).
+$ source ~/.venvs/chebgreen/bin/activate
 ```
 
 ##### Install the package
@@ -25,7 +25,7 @@ $ source ~/.venvs/myvenv/bin/activate
 ```bash
 $ cd chebgreen
 
-# production installation
+# Install the package and its dependencies.
 $ pip install . -r requirements.txt
 ```
 
