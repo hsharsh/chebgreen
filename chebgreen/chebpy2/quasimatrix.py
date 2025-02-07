@@ -204,7 +204,7 @@ class Quasimatrix(ABC):
         
         # Compute parameters for the QR:
         tol = np.finfo(float).eps*np.max(self.vscale)
-        n, numCols = len(self.data[0].coeffs), self.shape[1]
+        n, numCols = max([len(cb.coeffs) for cb in self.data]), self.shape[1]
 
         # Make the discrete analogue of the Quasimatrix:
         N = 2*max(n, numCols)

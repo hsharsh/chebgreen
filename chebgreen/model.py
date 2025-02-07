@@ -307,7 +307,7 @@ def modelInterp(interpSet: Dict[float,Chebfun2], interpSetHom: Dict[float,Chebfu
         N_ += interpSetHom[theta] * interpCoeffs[theta]
         
 
-    # Retract the interpolated singular functions and singular values from the tangent space at the origin    
+    # Retract the interpolated singular functions and singular values from the tangent space at the origin
     Un, _ = (U0 + U_).qr()
     Vn, _ = (V0 + V_).qr()
     
