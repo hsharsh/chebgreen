@@ -10,7 +10,7 @@ We use [chebpy](https://github.com/chebpy/chebpy) as a starting point to impleme
 
 ##### Create a virtual environment:
 ```bash
-# Create folder for the virtual environment or if you already have an existing folder skip this step.
+# Create folder for the virtual environment.
 $ mkdir -p ~/.venvs # 
 
 # Create a new virtual environment for the chebgreen package.
