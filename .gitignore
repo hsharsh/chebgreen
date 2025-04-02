@@ -18,6 +18,7 @@ build/
 savedModels*/
 plots*/
 datasets*/
+*/temp/*
 
 # Temporary bash scripts
 *.sh

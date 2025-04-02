@@ -82,7 +82,7 @@ for noise_level in noise_levels:
     cheb2prefs = Chebpy2Preferences()
     cheb2prefs.prefx.eps = eps
     cheb2prefs.prefx.eps = eps
-    e = Chebfun2(lambda x,y: Gcheb[x,y] - green(x,y), domain = model.domain, prefs = cheb2prefs, simplify = True)
+    e = Chebfun2(lambda x,y: np.abs(Gcheb[x,y] - green(x,y)), domain = model.domain, prefs = cheb2prefs, simplify = True)
     
     Error.append(e.norm()/gnorm)
     print(f"Error for a model with {noise_level*100} % noise is {Error[-1]*100}%")
