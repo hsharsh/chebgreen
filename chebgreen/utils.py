@@ -71,15 +71,23 @@ def runCustomScript(script      : str,
     plot_random_sample(example, theta, saveSuffix) # Plot a random sample from the dataset
 
     if theta is None:
-        with open(f"datasets/{example}/settings.ini", 'w') as f:
-            print_settings(file = f)
+        if saveSuffix is not None:
+            with open(f"datasets/{example}-{saveSuffix}/settings.ini", 'w') as f:
+                print_settings(file = f)
+        else:
+            with open(f"datasets/{example}/settings.ini", 'w') as f:
+                print_settings(file = f)
     else:
-        with open(f"datasets/{example}/{theta:.2f}/settings.ini", 'w') as f:
-            print_settings(file = f)
+        if saveSuffix is not None:
+            with open(f"datasets/{example}/{theta:.2f}-{saveSuffix}/settings.ini", 'w') as f:
+                print_settings(file = f)
+        else:
+            with open(f"datasets/{example}/{theta:.2f}/settings.ini", 'w') as f:
+                print_settings(file = f)
 
-def generateMatlabData(script: str, example: str, Theta: Optional[List] = None) -> str:
+def generateMatlabData(script: str, example: str, Theta: Optional[List] = None, noise_level: Optional[float] = parser['MATLAB'].getfloat('noise')) -> str:
     if Theta is None:
-        runCustomScript(script, example) # Run the custom script without theta
+        runCustomScript(script, example, noise_level = noise_level) # Run the custom script without theta
     else:
         for theta in Theta:
             # Check if the dataset already exists
@@ -87,7 +95,7 @@ def generateMatlabData(script: str, example: str, Theta: Optional[List] = None) 
                 print(f"Dataset found for Theta = {theta:.2f}. Skipping dataset generation.")
                 continue
             sys.stdout.flush() # Flush the stdout buffer
-            runCustomScript(script, example, theta) # Run the custom script with theta
+            runCustomScript(script, example, theta, noise_level = noise_level) # Run the custom script with theta
 
     sys.stdout.flush() # Flush the stdout buffer
     return os.path.abspath(f"datasets/{example}") # Return the path to the dataset

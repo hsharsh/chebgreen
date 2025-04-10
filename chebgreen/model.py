@@ -15,7 +15,8 @@ class ChebGreen(ABC):
                 script          : str = "generate_example",
                 example         : Optional[str] = None,
                 dirichletBC     : Optional[bool] = True,
-                datapath        : Optional[str] = None
+                datapath        : Optional[str] = None,
+                noise_level     : Optional[float] = 0.0
                 ):
         super().__init__()
         """
@@ -47,6 +48,8 @@ class ChebGreen(ABC):
                     An array of size (Ny, N) where N is the number of samples.
                 - U: The solutions for the system under corresponding forcing functions.
                     An array of size (Nx, N) where N is the number of samples.
+
+            noise_level: A float which specifies the noise level of the data when generating the dataset.
         """
         
         self.Theta = Theta
@@ -61,7 +64,10 @@ class ChebGreen(ABC):
         # Set data path for the model:
         if generateData: 
             print(f"Generating dataset for example \'{example}\'")
-            self.datapath = generateMatlabData(script, example, self.Theta)
+            if noise_level is not None:
+                self.datapath = generateMatlabData(script, example, self.Theta, noise_level)
+            else:
+                self.datapath = generateMatlabData(script, example, self.Theta)
         else:
             print(f"Loading dataset at {datapath}")
             assert datapath is not None, "No datapath specified!"

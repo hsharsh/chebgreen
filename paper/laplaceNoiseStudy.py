@@ -36,7 +36,7 @@ print(f"Learning a chebfun model for analytical Green's function of Laplacian op
 eps = 1e-6
 cheb2prefs = Chebpy2Preferences()
 cheb2prefs.prefx.eps = eps
-cheb2prefs.prefx.eps = eps
+cheb2prefs.prefy.eps = eps
 g = Chebfun2(green, domain = domain, prefs = cheb2prefs, simplify = True)
 gnorm = g.norm()
 print("-------------------------------------------------------------------------------")
@@ -80,9 +80,22 @@ for noise_level in noise_levels:
     print(f"Computing empirical error for example \'{example}\' with {noise_level*100}% noise")
     # Compute the empirical error
     cheb2prefs = Chebpy2Preferences()
-    cheb2prefs.prefx.eps = eps
-    cheb2prefs.prefx.eps = eps
+    cheb2prefs.prefx.eps = 1e-8
+    cheb2prefs.prefy.eps = 1e-8
+    cheb2prefs.maxRank = np.array([2059,2059])
     e = Chebfun2(lambda x,y: np.abs(Gcheb[x,y] - green(x,y)), domain = model.domain, prefs = cheb2prefs, simplify = True)
+
+    xx = np.linspace(domain[0], domain[1], 1000)
+    ss = np.linspace(domain[2], domain[3], 1000)
+    X, S = np.meshgrid(xx, ss)
+    E = np.abs(e[X,S])
+    fig = plt.figure(figsize = (8,6))
+    plt.contourf(X, S, E, levels = 100, cmap = 'turbo')
+    plt.colorbar()
+    plt.xlabel('x')
+    plt.ylabel('s')
+    plt.title('Error of the Green\'s function')
+    fig.savefig(f'{savePath}/{example}-error-{int(noise_level*100)}.png', dpi = fig.dpi)
     
     Error.append(e.norm()/gnorm)
     print(f"Error for a model with {noise_level*100} % noise is {Error[-1]*100}%")
