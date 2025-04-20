@@ -30,15 +30,6 @@ script = "generate_example"
 example = "advection_diffusion"
 dirichletBC = True
 
-print(f"Learning a chebfun model for analytical Green's function of Advection-Diffusion operator")
-# Analytical Green's function
-eps = 1e-6
-cheb2prefs = Chebpy2Preferences()
-cheb2prefs.prefx.eps = eps
-cheb2prefs.prefx.eps = eps
-g = Chebfun2(green, domain = domain, prefs = cheb2prefs, simplify = True)
-gnorm = g.norm()
-
 Nsample = 100
 lmbda = 0.01
 Nf = 500
@@ -86,7 +77,8 @@ for noise_level in noise_levels:
     plt.ylabel('s')
     plt.title('Error of the interpolated Green\'s function')
     fig.savefig(f'{savePath}/{example}-interp-error-{int(noise_level*100)}.png', dpi = fig.dpi)
-
+    plt.close()
+    
     print(f"Error for a model with {noise_level*100} % noise is {Error[-1]*100}%")
     print("-------------------------------------------------------------------------------")
     shutil.rmtree(f"datasets/{example}")

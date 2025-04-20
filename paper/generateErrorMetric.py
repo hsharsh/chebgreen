@@ -12,7 +12,7 @@ from pathlib import Path
 import shutil, time, sys
 
 def main(example):
-    print(f"Generating plots for example {example}...")
+    print(f"Generating error metric for example {example}...")
     print("-------------------------------------------------------------------------------")
 
     if example == "advection_diffusion":

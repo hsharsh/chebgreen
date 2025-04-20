@@ -60,7 +60,7 @@ for noise_level in noise_levels:
     G = model.evaluateG(x,y)
     N = model.evaluateN(data.xF)
     GreenNNPath = "temp/"
-    model.build(dimension = dimension,domain = domain, dirichletBC = dirichletBC, loadPath = GreenNNPath, device = torch.device('cpu'))
+    model.build(dimension = dimension,domain = domain, dirichletBC = dirichletBC, loadPath = GreenNNPath, device = torch.device('cuda:1'))
 
     savePath = f"plots/{example}"
     Path(savePath).mkdir(parents=True, exist_ok=True)
@@ -80,9 +80,8 @@ for noise_level in noise_levels:
     print(f"Computing empirical error for example \'{example}\' with {noise_level*100}% noise")
     # Compute the empirical error
     cheb2prefs = Chebpy2Preferences()
-    cheb2prefs.prefx.eps = 1e-8
-    cheb2prefs.prefy.eps = 1e-8
-    cheb2prefs.maxRank = np.array([2059,2059])
+    cheb2prefs.prefx.eps = eps
+    cheb2prefs.prefy.eps = eps
     e = Chebfun2(lambda x,y: np.abs(Gcheb[x,y] - green(x,y)), domain = model.domain, prefs = cheb2prefs, simplify = True)
 
     xx = np.linspace(domain[0], domain[1], 1000)
@@ -96,6 +95,7 @@ for noise_level in noise_levels:
     plt.ylabel('s')
     plt.title('Error of the Green\'s function')
     fig.savefig(f'{savePath}/{example}-error-{int(noise_level*100)}.png', dpi = fig.dpi)
+    plt.close()
     
     Error.append(e.norm()/gnorm)
     print(f"Error for a model with {noise_level*100} % noise is {Error[-1]*100}%")
